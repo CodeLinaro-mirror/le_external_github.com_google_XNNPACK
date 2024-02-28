@@ -76,7 +76,7 @@ protected:
   std::uniform_real_distribution<float> f32dist;
   std::uniform_int_distribution<size_t> dim_dist;
 
-  uint32_t batch_size;
+  size_t batch_size;
   size_t m;
   size_t k;
   size_t n;
@@ -259,9 +259,11 @@ TEST_F(BatchMatrixMultiplyTestF16, matches_operator_api)
   size_t workspace_size = 0;
   size_t workspace_alignment = 0;
   ASSERT_EQ(
-    xnn_status_success, xnn_reshape_batch_matrix_multiply_nc_f16(
-                          op, batch_size, m, k, n,
-                          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
+      xnn_status_success,
+      xnn_reshape_batch_matrix_multiply_nc_f16(
+          op, /*num_batch_dims=*/1,
+          /*batch_dims_a=*/&batch_size, /*batch_dims_b=*/&batch_size, m, k, n,
+          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
   ASSERT_NE(workspace_size, 0);
   ASSERT_LE(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
 
@@ -343,9 +345,11 @@ TEST_F(BatchMatrixMultiplyTestF32, matches_operator_api)
   size_t workspace_size = 0;
   size_t workspace_alignment = 0;
   ASSERT_EQ(
-    xnn_status_success, xnn_reshape_batch_matrix_multiply_nc_f32(
-                          op, batch_size, m, k, n,
-                          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
+      xnn_status_success,
+      xnn_reshape_batch_matrix_multiply_nc_f32(
+          op, /*num_batch_dims=*/1,
+          /*batch_dims_a=*/&batch_size, /*batch_dims_b=*/&batch_size, m, k, n,
+          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
   ASSERT_NE(workspace_size, 0);
   ASSERT_LE(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
 
@@ -427,9 +431,11 @@ TEST_F(BatchMatrixMultiplyTestF32, matches_operator_api_transposed)
   size_t workspace_size = 0;
   size_t workspace_alignment = 0;
   ASSERT_EQ(
-    xnn_status_success, xnn_reshape_batch_matrix_multiply_nc_f32(
-                          op, batch_size, m, k, n,
-                          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
+      xnn_status_success,
+      xnn_reshape_batch_matrix_multiply_nc_f32(
+          op, /*num_batch_dims=*/1,
+          /*batch_dims_a=*/&batch_size, /*batch_dims_b=*/&batch_size, m, k, n,
+          &workspace_size, &workspace_alignment, /*threadpool=*/nullptr));
   ASSERT_NE(workspace_size, 0);
   ASSERT_LE(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
 
@@ -634,15 +640,6 @@ TEST(BatchMatrixMultiplyTest, input1_num_dim_ne_input2_num_dim) {
   ASSERT_EQ(xnn_status_invalid_parameter, status);
 }
 
-TEST(BatchMatrixMultiplyTest, input1_batch_dim_ne_input2_dim) {
-  std::vector<size_t> input1_dims = {3, 3, 5};
-  std::vector<size_t> input2_dims = {2, 7, 5};
-  std::vector<size_t> output_dims = {2, 3, 7};
-  xnn_status status = xnn_status_success;
-  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims, output_dims);
-  ASSERT_EQ(xnn_status_invalid_parameter, status);
-}
-
 TEST(BatchMatrixMultiplyTest, input1_k_dim_ne_input2_dim) {
   std::vector<size_t> input1_dims = {2, 3, 7};
   std::vector<size_t> input2_dims = {2, 5, 7};
@@ -695,4 +692,74 @@ TEST(BatchMatrixMultiplyTest, output_n_ne_transposed_input2_n) {
   xnn_status status = xnn_status_success;
   DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims, output_dims, XNN_FLAG_TRANSPOSE_B);
   ASSERT_EQ(xnn_status_invalid_parameter, status);
+}
+
+// Test broadcasting in the batch dimensions of the first input.
+TEST(BatchMatrixMultiplyTest, input1_batch_dim_ne_input2_dim) {
+  std::vector<size_t> input1_dims = {3, 3, 5};
+  std::vector<size_t> input2_dims = {2, 7, 5};
+  std::vector<size_t> output_dims = {2, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims, output_dims);
+  ASSERT_EQ(xnn_status_invalid_parameter, status);
+}
+
+TEST(BatchMatrixMultiplyTest, input1_batch_dim_bcast_one) {
+  std::vector<size_t> input1_dims = {1, 3, 5};
+  std::vector<size_t> input2_dims = {2, 5, 7};
+  std::vector<size_t> output_dims = {2, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
+}
+
+TEST(BatchMatrixMultiplyTest, input1_batch_dim_bcast_mult) {
+  std::vector<size_t> input1_dims = {2, 3, 5};
+  std::vector<size_t> input2_dims = {6, 5, 7};
+  std::vector<size_t> output_dims = {6, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
+}
+
+TEST(BatchMatrixMultiplyTest, input2_batch_dim_bcast_one) {
+  std::vector<size_t> input1_dims = {2, 3, 5};
+  std::vector<size_t> input2_dims = {1, 5, 7};
+  std::vector<size_t> output_dims = {2, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
+}
+
+TEST(BatchMatrixMultiplyTest, input2_batch_dim_bcast_mult) {
+  std::vector<size_t> input1_dims = {6, 3, 5};
+  std::vector<size_t> input2_dims = {2, 5, 7};
+  std::vector<size_t> output_dims = {6, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
+}
+
+TEST(BatchMatrixMultiplyTest, both_inputs_batch_dim_bcast_mult) {
+  std::vector<size_t> input1_dims = {2, 6, 3, 5};
+  std::vector<size_t> input2_dims = {4, 2, 5, 7};
+  std::vector<size_t> output_dims = {4, 6, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
+}
+
+TEST(BatchMatrixMultiplyTest, both_inputs_batch_dim_bcast_one) {
+  std::vector<size_t> input1_dims = {1, 6, 3, 5};
+  std::vector<size_t> input2_dims = {4, 1, 5, 7};
+  std::vector<size_t> output_dims = {4, 6, 3, 7};
+  xnn_status status = xnn_status_success;
+  DefineBatchMatrixMultiplySubgraph(&status, input1_dims, input2_dims,
+                                    output_dims);
+  ASSERT_EQ(xnn_status_success, status);
 }

@@ -2437,14 +2437,10 @@ enum xnn_status xnn_create_batch_matrix_multiply_nc_f16(
   xnn_operator_t* batch_matrix_multiply_op);
 
 enum xnn_status xnn_reshape_batch_matrix_multiply_nc_f16(
-  xnn_operator_t batch_matrix_multiply_op,
-  size_t batch_size,
-  size_t m,
-  size_t k,
-  size_t n,
-  size_t* workspace_size,
-  size_t* workspace_alignment,
-  pthreadpool_t threadpool);
+    xnn_operator_t batch_matrix_multiply_op, size_t num_batch_dims,
+    const size_t* batch_dims_a, const size_t* batch_dims_b, size_t m, size_t k,
+    size_t n, size_t* workspace_size, size_t* workspace_alignment,
+    pthreadpool_t threadpool);
 
 enum xnn_status xnn_setup_batch_matrix_multiply_nc_f16(
   xnn_operator_t batch_matrix_multiply_op,
@@ -2458,14 +2454,10 @@ enum xnn_status xnn_create_batch_matrix_multiply_nc_f32(
   xnn_operator_t* batch_matrix_multiply_op);
 
 enum xnn_status xnn_reshape_batch_matrix_multiply_nc_f32(
-  xnn_operator_t batch_matrix_multiply_op,
-  size_t batch_size,
-  size_t m,
-  size_t k,
-  size_t n,
-  size_t* workspace_size,
-  size_t* workspace_alignment,
-  pthreadpool_t threadpool);
+    xnn_operator_t batch_matrix_multiply_op, size_t num_batch_dims,
+    const size_t* batch_dims_a, const size_t* batch_dims_b, size_t m, size_t k,
+    size_t n, size_t* workspace_size, size_t* workspace_alignment,
+    pthreadpool_t threadpool);
 
 enum xnn_status xnn_setup_batch_matrix_multiply_nc_f32(
   xnn_operator_t batch_matrix_multiply_op,

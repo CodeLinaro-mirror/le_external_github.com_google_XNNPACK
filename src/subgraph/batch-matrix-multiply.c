@@ -4,17 +4,22 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <assert.h>
-#include <math.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
-
+#include <string.h>
 #include <xnnpack.h>
+#include <xnnpack/common.h>
 #include <xnnpack/log.h>
+#include <xnnpack/math.h>
+#include <xnnpack/node-type.h>
+#include <xnnpack/operator-type.h>
 #include <xnnpack/operator.h>
 #include <xnnpack/params.h>
-#include <xnnpack/subgraph.h>
 #include <xnnpack/subgraph-validation.h>
+#include <xnnpack/subgraph.h>
 
+#include "pthreadpool.h"
 
 static enum xnn_status create_batch_matrix_multiply_operator(
   const struct xnn_node* node,
@@ -57,35 +62,40 @@ static enum xnn_status reshape_batch_matrix_multiply_operator(
   assert(output_id != XNN_INVALID_VALUE_ID);
   assert(output_id < num_values);
 
+  // Get the inputs and outputs.
   const struct xnn_value* input1 = values + input1_id;
   const struct xnn_value* input2 = values + input2_id;
   struct xnn_value* output = values + output_id;
+
+  // Extract and validate the dimensions.
   // input1: [B, M, K]
   // input2: [B, K, N] or [B, N, K] (transpose_b)
+  assert(input1->shape.num_dims == input2->shape.num_dims);
   const size_t m = input1->shape.dim[input1->shape.num_dims - 2];
   const size_t k = input1->shape.dim[input1->shape.num_dims - 1];
   const bool transpose_b = (opdata->flags & XNN_FLAG_TRANSPOSE_B) != 0;
   const size_t n = input2->shape.dim[transpose_b ? input2->shape.num_dims - 2 : input2->shape.num_dims - 1];
-  const size_t batch_size = xnn_shape_multiply_batch_dims(&input1->shape, 2);
+  assert(k == input2->shape.dim[transpose_b ? input2->shape.num_dims - 1
+                                            : input2->shape.num_dims - 2]);
+
+  const size_t num_batch_dims = input1->shape.num_dims - 2;
 
   const size_t old_workspace_size = opdata->workspace_size;
   enum xnn_status status = xnn_status_invalid_state;
   switch (opdata->operator_objects[0]->type) {
     case xnn_operator_type_batch_matrix_multiply_nc_f16:
       status = xnn_reshape_batch_matrix_multiply_nc_f16(
-        opdata->operator_objects[0],
-        batch_size,
-        m, k, n,
-        &opdata->workspace_size, &opdata->workspace_alignment,
-        threadpool);
+          opdata->operator_objects[0], num_batch_dims,
+          /*batch_dims_a=*/input1->shape.dim,
+          /*batch_dims_b=*/input2->shape.dim, m, k, n, &opdata->workspace_size,
+          &opdata->workspace_alignment, threadpool);
       break;
     case xnn_operator_type_batch_matrix_multiply_nc_f32:
       status = xnn_reshape_batch_matrix_multiply_nc_f32(
-        opdata->operator_objects[0],
-        batch_size,
-        m, k, n,
-        &opdata->workspace_size, &opdata->workspace_alignment,
-        threadpool);
+          opdata->operator_objects[0], num_batch_dims,
+          /*batch_dims_a=*/input1->shape.dim,
+          /*batch_dims_b=*/input2->shape.dim, m, k, n, &opdata->workspace_size,
+          &opdata->workspace_alignment, threadpool);
       break;
     default:
       XNN_UNREACHABLE;
@@ -297,20 +307,27 @@ enum xnn_status xnn_define_batch_matrix_multiply(
 
   // Check that all batch dimensions match.
   for (size_t i = 0; i < input1_value->shape.num_dims - 2; i++) {
-    if (input1_value->shape.dim[i] != input2_value->shape.dim[i]) {
+    if (input1_value->shape.dim[i] % input2_value->shape.dim[i] != 0 &&
+        input2_value->shape.dim[i] % input1_value->shape.dim[i] != 0) {
       xnn_log_error(
-        "failed to define %s operator with input1 ID #%" PRIu32 " and input2 ID #%" PRIu32
-        ": mismatch at dimension %zu (%zu != %zu)",
-        xnn_node_type_to_string(xnn_node_type_batch_matrix_multiply), input1_id, input2_id, i,
-        input1_value->shape.dim[i], input2_value->shape.dim[i]);
+          "failed to define %s operator with input1 ID #%" PRIu32
+          " and input2 ID #%" PRIu32
+          ": incompatible dimension %zu (%zu not a multiple of %zu or vice "
+          "versa)",
+          xnn_node_type_to_string(xnn_node_type_batch_matrix_multiply),
+          input1_id, input2_id, i, input2_value->shape.dim[i],
+          input1_value->shape.dim[i]);
       return xnn_status_invalid_parameter;
     }
-    if (input1_value->shape.dim[i] != output_value->shape.dim[i]) {
+    if (max(input1_value->shape.dim[i], input2_value->shape.dim[i]) !=
+        output_value->shape.dim[i]) {
       xnn_log_error(
-        "failed to define %s operator with input1 ID #%" PRIu32 " and output ID #%" PRIu32
-        ": mismatch at dimension %zu (%zu != %zu)",
-        xnn_node_type_to_string(xnn_node_type_batch_matrix_multiply), input1_id, output_id, i,
-        input1_value->shape.dim[i], output_value->shape.dim[i]);
+          "failed to define %s operator with input1 ID #%" PRIu32
+          " and output ID #%" PRIu32 ": mismatch at dimension %zu (%zu != %zu)",
+          xnn_node_type_to_string(xnn_node_type_batch_matrix_multiply),
+          input2_id, output_id, i,
+          max(input1_value->shape.dim[i], input2_value->shape.dim[i]),
+          output_value->shape.dim[i]);
       return xnn_status_invalid_parameter;
     }
   }
