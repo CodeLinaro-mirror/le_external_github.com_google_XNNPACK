@@ -3,34 +3,33 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <xnnpack.h>
+#include <xnnpack/node-type.h>
+#include <xnnpack/operator.h>
+#include <xnnpack/subgraph.h>
+
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
+#include <functional>
 #include <memory>
 #include <numeric>
 #include <random>
 #include <vector>
 
-#include <fp16/fp16.h>
+#include "replicable_random_device.h"
 #include <gtest/gtest.h>
-
-#include <xnnpack.h>
-#include <xnnpack/node-type.h>
-#include <xnnpack/operator.h>
-#include <xnnpack/subgraph.h>
+#include <fp16/fp16.h>
 
 template <
   typename InputType,
   typename WeightType = InputType,
   typename OutputType = InputType>
 class PreluTest : public ::testing::Test {
-protected:
-  void SetUp() override
-  {
-    random_device = std::make_unique<std::random_device>();
-    rng = std::mt19937((*random_device)());
+ protected:
+  void SetUp() override {
     dim_dist = std::uniform_int_distribution<size_t>(1, 9);
     input_dims = RandomShape(4);
     output_dims = input_dims;
@@ -55,8 +54,7 @@ protected:
     return std::accumulate(dims.begin(), dims.end(), size_t(1), std::multiplies<size_t>());
   }
 
-  std::unique_ptr<std::random_device> random_device;
-  std::mt19937 rng;
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_int_distribution<size_t> dim_dist;
 
   std::vector<size_t> output_dims;

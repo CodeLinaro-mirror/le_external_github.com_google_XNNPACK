@@ -5,21 +5,22 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
-#include <fp16/fp16.h>
+#include <xnnpack.h>
+#include <xnnpack/cache.h>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <random>
 #include <vector>
 
-#include <xnnpack.h>
-#include <xnnpack/cache.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 class PReLUOperatorTester {
  public:
@@ -28,33 +29,33 @@ class PReLUOperatorTester {
     FP32,
   };
 
-  inline PReLUOperatorTester& batch_size(size_t batch_size) {
+  PReLUOperatorTester& batch_size(size_t batch_size) {
     assert(batch_size != 0);
     this->batch_size_ = batch_size;
     return *this;
   }
 
-  inline size_t batch_size() const {
+  size_t batch_size() const {
     return this->batch_size_;
   }
 
-  inline PReLUOperatorTester& channels(size_t channels) {
+  PReLUOperatorTester& channels(size_t channels) {
     assert(channels != 0);
     this->channels_ = channels;
     return *this;
   }
 
-  inline size_t channels() const {
+  size_t channels() const {
     return this->channels_;
   }
 
-  inline PReLUOperatorTester& x_stride(size_t x_stride) {
+  PReLUOperatorTester& x_stride(size_t x_stride) {
     assert(x_stride != 0);
     this->x_stride_ = x_stride;
     return *this;
   }
 
-  inline size_t x_stride() const {
+  size_t x_stride() const {
     if (this->x_stride_ == 0) {
       return this->channels_;
     } else {
@@ -63,13 +64,13 @@ class PReLUOperatorTester {
     }
   }
 
-  inline PReLUOperatorTester& y_stride(size_t y_stride) {
+  PReLUOperatorTester& y_stride(size_t y_stride) {
     assert(y_stride != 0);
     this->y_stride_ = y_stride;
     return *this;
   }
 
-  inline size_t y_stride() const {
+  size_t y_stride() const {
     if (this->y_stride_ == 0) {
       return this->channels_;
     } else {
@@ -78,30 +79,30 @@ class PReLUOperatorTester {
     }
   }
 
-  inline PReLUOperatorTester& weights_type(WeightsType weights_type) {
+  PReLUOperatorTester& weights_type(WeightsType weights_type) {
     this->weights_type_ = weights_type;
     return *this;
   }
 
-  inline WeightsType weights_type() const {
+  WeightsType weights_type() const {
     return this->weights_type_;
   }
 
-  inline PReLUOperatorTester& iterations(size_t iterations) {
+  PReLUOperatorTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
-  inline PReLUOperatorTester& use_weights_cache(bool use_weights_cache) {
+  PReLUOperatorTester& use_weights_cache(bool use_weights_cache) {
     this->use_weights_cache_ = use_weights_cache;
     return *this;
   }
 
-  inline bool use_weights_cache() const {
+  bool use_weights_cache() const {
     return this->use_weights_cache_;
   }
 
@@ -115,8 +116,7 @@ class PReLUOperatorTester {
         GTEST_FAIL() << "unexpected weights type";
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     auto f32irng = std::uniform_real_distribution<float>(-1.0f, 1.0f);
     auto f32wrng = std::uniform_real_distribution<float>(0.25f, 0.75f);
 
@@ -243,8 +243,7 @@ class PReLUOperatorTester {
   void TestF32() const {
     ASSERT_EQ(weights_type(), WeightsType::Default);
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     auto f32irng = std::uniform_real_distribution<float>(-1.0f, 1.0f);
     auto f32wrng = std::uniform_real_distribution<float>(0.25f, 0.75f);
 

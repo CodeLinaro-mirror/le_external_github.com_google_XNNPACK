@@ -3,6 +3,11 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <xnnpack.h>
+#include <xnnpack/allocation-type.h>
+#include <xnnpack/node-type.h>
+#include <xnnpack/subgraph.h>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -13,17 +18,13 @@
 #include <random>
 #include <vector>
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <fp16/fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/node-type.h>
-#include <xnnpack/subgraph.h>
-
 #include "mock-allocator.h"
+#include "replicable_random_device.h"
 #include "runtime-tester.h"
 #include "subgraph-tester.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 namespace xnnpack {
 
@@ -450,8 +451,7 @@ TEST(SUBGRAPH_FP16, fully_connected_qd8_f16_qc8w) {
 
   // We should have 4 nodes, the original fully connected and conversion nodes, a convert for the external input,
   // and a convert for the external output.
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   std::vector<float> input(15 + XNN_EXTRA_BYTES / sizeof(float));
   std::generate(input.begin(), input.end(), std::ref(f32rng));

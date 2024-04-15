@@ -1,5 +1,17 @@
 #include "gemm-microkernel-tester.h"
 
+#include <stdint.h>
+#include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/common.h>
+#include <xnnpack/math.h>
+#include <xnnpack/microfnptr.h>
+#include <xnnpack/microparams-init.h>
+#include <xnnpack/microparams.h>
+#include <xnnpack/pack.h>
+#include <xnnpack/quantization.h>
+#include <xnnpack/requantization.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -11,19 +23,7 @@
 #include <random>
 #include <vector>
 
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/allocator.h>
-#include <xnnpack/common.h>
-#include <xnnpack/math.h>
-#include <xnnpack/memory.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/microparams-init.h>
-#include <xnnpack/microparams.h>
-#include <xnnpack/pack.h>
-#include <xnnpack/quantization.h>
-#include <xnnpack/requantization.h>
-
+#include "replicable_random_device.h"
 #include <gtest/gtest.h>
 #include <fp16/bitcasts.h>
 #include <fp16/fp16.h>
@@ -90,8 +90,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -242,8 +241,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -395,8 +393,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto u8rng = std::bind(
     std::uniform_int_distribution<uint32_t>(0, std::numeric_limits<uint8_t>::max()), std::ref(rng));
@@ -482,8 +479,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto u8rng = std::bind(
     std::uniform_int_distribution<uint32_t>(0, std::numeric_limits<uint8_t>::max()), std::ref(rng));
@@ -600,8 +596,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -708,8 +703,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -843,8 +837,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -975,8 +968,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -1107,8 +1099,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -1246,8 +1237,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(-1.f, 1.f), std::ref(rng));
   auto scalerng = std::bind(std::uniform_real_distribution<float>(0.5f, 2.f), std::ref(rng));
   auto w8rng = std::bind(
@@ -1384,8 +1374,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -1477,8 +1466,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -1600,8 +1588,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(0.5f, 1.0f), std::ref(rng));
 
   std::vector<uint16_t> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(uint16_t));
@@ -1680,8 +1667,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
   auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
 
@@ -1757,8 +1743,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
   auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
 
@@ -1880,8 +1865,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_LE(m(), mr());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a(packed_k() * mr());
@@ -1960,8 +1944,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2024,8 +2007,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2093,8 +2075,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2184,8 +2165,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2271,8 +2251,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist(0.1f, 1.0f);
   std::uniform_int_distribution<int32_t> i8dist(-1, std::numeric_limits<uint8_t>::max());
 
@@ -2388,8 +2367,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
   std::uniform_int_distribution<int32_t> i8dist(-1, std::numeric_limits<int8_t>::max());
 
@@ -2475,8 +2453,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
   std::uniform_int_distribution<int32_t> i8dist(-1, std::numeric_limits<int8_t>::max());
 
@@ -2556,8 +2533,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist(0.1f, 1.0f);
   std::uniform_int_distribution<int32_t> i8dist(-1, std::numeric_limits<int8_t>::max());
 
@@ -2660,8 +2636,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2747,8 +2722,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((mr() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2841,8 +2815,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((mr() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -2940,8 +2913,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((mr() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -3179,8 +3151,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist(0.0f, 0.5f);
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -3335,8 +3306,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(cm_stride(), n());
 
   ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((m() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -3429,8 +3399,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist(0.0f, 0.5f);
 
   std::vector<float> a((mr() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -3598,8 +3567,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_LE(m(), mr());
 
   ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
   std::vector<float> a((mr() - 1) * a_stride() + k() + XNN_EXTRA_BYTES / sizeof(float));
@@ -3729,8 +3697,7 @@ void GemmMicrokernelTester::Test(
   ASSERT_GE(a_stride(), k());
   ASSERT_GE(cm_stride(), n());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
   auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
 
@@ -3819,8 +3786,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
   auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
 
@@ -3954,8 +3920,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -4080,8 +4045,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -4225,8 +4189,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),
@@ -4327,8 +4290,7 @@ void GemmMicrokernelTester::Test(
 {
   ASSERT_LE(m(), mr());
 
-  std::random_device random_device;
-  auto rng = std::mt19937(random_device());
+  xnnpack::ReplicableRandomDevice rng;
   auto i32rng = std::bind(std::uniform_int_distribution<int32_t>(-10000, 10000), std::ref(rng));
   auto i8rng = std::bind(
     std::uniform_int_distribution<int32_t>(std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()),

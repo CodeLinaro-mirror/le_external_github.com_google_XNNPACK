@@ -3,31 +3,32 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/common.h>
+#include <xnnpack/math.h>
+#include <xnnpack/node-type.h>
+#include <xnnpack/operator.h>
+#include <xnnpack/requantization.h>
+#include <xnnpack/subgraph.h>
+
 #include <algorithm>  // For std::generate, std::min.
 #include <array>      // For std::array.
 #include <cassert>    // For std::cassert.
 #include <cmath>      // For std::lrintf.
 #include <cstddef>    // For size_t.
 #include <cstdint>    // For uint32_t.
-#include <limits>     // For std::numeric_limits.
-#include <memory>     // For std::unique_ptr.
-#include <numeric>    // For std::accumulate.
-#include <random>     // For std::random_device, std::mt19937, std::uniform_real_distribution.
-#include <vector>     // For std::vector.
+#include <functional>
+#include <limits>   // For std::numeric_limits.
+#include <memory>   // For std::unique_ptr.
+#include <numeric>  // For std::accumulate.
+#include <random>   // For std::uniform_real_distribution.
+#include <vector>   // For std::vector.
 
-#include <fp16/fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/common.h>
-#include <xnnpack/math.h>
-#include <xnnpack/operator.h>
-#include <xnnpack/node-type.h>
-#include <xnnpack/requantization.h>
-#include <xnnpack/subgraph.h>
-
+#include "replicable_random_device.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 using testing::ElementsAreArray;
 
@@ -35,10 +36,7 @@ template <class InputType, class KernelType = InputType,
           class BiasType = InputType, class OutputType = InputType, bool even_channels = false>
 class FullyConnectedTestBase : public ::testing::Test {
  protected:
-  FullyConnectedTestBase()
-  {
-    random_device = std::make_unique<std::random_device>();
-    rng = std::mt19937((*random_device)());
+  FullyConnectedTestBase() {
     f32dist = std::uniform_real_distribution<float>(0.1f, 1.0f);
     scale_dist = std::uniform_real_distribution<float>(1.0f, 5.0f);
     i32dist = std::uniform_int_distribution<int32_t>(-10000, 10000);
@@ -90,8 +88,7 @@ class FullyConnectedTestBase : public ::testing::Test {
     return std::accumulate(dims.begin(), dims.end(), size_t(1), std::multiplies<size_t>());
   }
 
-  std::unique_ptr<std::random_device> random_device;
-  std::mt19937 rng;
+  xnnpack::ReplicableRandomDevice rng;
   std::uniform_int_distribution<int32_t> i32dist;
   std::uniform_real_distribution<float> f32dist;
   std::uniform_real_distribution<float> scale_dist;
