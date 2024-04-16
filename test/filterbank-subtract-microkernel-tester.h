@@ -5,50 +5,50 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <cstddef>
-#include <cstdlib>
-#include <numeric>
-#include <random>
-#include <vector>
-
 #include <xnnpack.h>
 #include <xnnpack/aligned-allocator.h>
 #include <xnnpack/microfnptr.h>
 
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
+#include <numeric>
+#include <random>
+#include <vector>
+
+#include <gtest/gtest.h>
 
 class FilterbankSubtractMicrokernelTester {
  public:
 
-  inline FilterbankSubtractMicrokernelTester& batch(size_t batch) {
+  FilterbankSubtractMicrokernelTester& batch(size_t batch) {
     assert(batch != 0);
     this->batch_ = batch;
     return *this;
   }
 
-  inline size_t batch() const {
+  size_t batch() const {
     return this->batch_;
   }
 
-  inline FilterbankSubtractMicrokernelTester& inplace(bool inplace) {
+  FilterbankSubtractMicrokernelTester& inplace(bool inplace) {
     this->inplace_ = inplace;
     return *this;
   }
 
-  inline bool inplace() const {
+  bool inplace() const {
     return this->inplace_;
   }
 
-  inline FilterbankSubtractMicrokernelTester& iterations(size_t iterations) {
+  FilterbankSubtractMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 

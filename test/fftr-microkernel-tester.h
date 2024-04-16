@@ -5,21 +5,19 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack/math.h>
+#include <xnnpack/microfnptr.h>
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <random>
 #include <vector>
 
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/math.h>
-
+#include <gtest/gtest.h>
 
 static const int16_t xnn_reference_table_fftr_twiddle[256] = {
   -402,-32765,   -804,-32757,  -1206,-32745,  -1608,-32728,
@@ -121,22 +119,22 @@ static void xnn_cs16_fftr_reference(
 
 class FftrMicrokernelTester {
  public:
-  inline FftrMicrokernelTester& samples(size_t samples) {
+  FftrMicrokernelTester& samples(size_t samples) {
     assert(samples != 0);
     this->samples_ = samples;
     return *this;
   }
 
-  inline size_t samples() const {
+  size_t samples() const {
     return this->samples_;
   }
 
-  inline FftrMicrokernelTester& iterations(size_t iterations) {
+  FftrMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 

@@ -5,40 +5,41 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/microfnptr.h>
+#include <xnnpack/microparams.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <random>
 #include <vector>
 
+#include <gtest/gtest.h>
 #include <fp16/fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/microparams-init.h>
-
 
 class RAddStoreExpMinusMaxMicrokernelTester {
  public:
-  inline RAddStoreExpMinusMaxMicrokernelTester& elements(size_t elements) {
+  RAddStoreExpMinusMaxMicrokernelTester& elements(size_t elements) {
     assert(elements != 0);
     this->elements_ = elements;
     return *this;
   }
 
-  inline size_t elements() const {
+  size_t elements() const {
     return this->elements_;
   }
 
-  inline RAddStoreExpMinusMaxMicrokernelTester& iterations(size_t iterations) {
+  RAddStoreExpMinusMaxMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
