@@ -17,8 +17,8 @@ static int16_t math_signcompliment_f16(const uint16_t a) {
   return (a & 0x7FFF) ^ -((int16_t) a < 0);
 }
 
-static uint16_t math_max_f16(const uint16_t a, const uint16_t b) {
-  return math_signcompliment_f16(a) > math_signcompliment_f16(b) ? a : b;
+XNN_INLINE static int16_t math_max_s16(const int16_t a, const int16_t b) {
+  return XNN_UNPREDICTABLE(a > b) ? a : b;
 }
 
 
@@ -36,11 +36,12 @@ void xnn_f16_rmax_ukernel__scalar_u1(
   const uint16_t* i = (const uint16_t*) input;
   uint16_t* o = (uint16_t*) output;
 
-  uint16_t vmax0 = *i;
+  int16_t vt = math_signcompliment_f16(*i);
+  int16_t vmax0 = vt;
   do {
-    const uint16_t vt = *i++;
-    vmax0 = math_max_f16(vmax0, vt);
+    vt = math_signcompliment_f16(*i++);
+    vmax0 = math_max_s16(vmax0, vt);
     batch -= sizeof(uint16_t);
   } while (batch != 0);
-  o[0] = vmax0;
+  o[0] = (uint16_t) math_signcompliment_f16((uint16_t) vmax0);
 }

@@ -18,8 +18,8 @@ static int16_t math_signcompliment_f16(const uint16_t a) {
 }
 
 
-static uint16_t math_min_f16(const uint16_t a, const uint16_t b) {
-  return math_signcompliment_f16(a) < math_signcompliment_f16(b) ? a : b;
+XNN_INLINE static int16_t math_min_s16(const int16_t a, const int16_t b) {
+  return XNN_UNPREDICTABLE(a < b) ? a : b;
 }
 
 void xnn_f16_rmin_ukernel__scalar_u1(
@@ -36,11 +36,12 @@ void xnn_f16_rmin_ukernel__scalar_u1(
   const uint16_t* i = (const uint16_t*) input;
   uint16_t* o = (uint16_t*) output;
 
-  uint16_t vmin0 = *i;
+  int16_t vt = math_signcompliment_f16(*i);
+  int16_t vmin0 = vt;
   do {
-    const uint16_t vt = *i++;
-    vmin0 = math_min_f16(vmin0, vt);
+    vt = math_signcompliment_f16(*i++);
+    vmin0 = math_min_s16(vmin0, vt);
     batch -= sizeof(uint16_t);
   } while (batch != 0);
-  o[0] = vmin0;
+  o[0] = (uint16_t) math_signcompliment_f16((uint16_t) vmin0);
 }
