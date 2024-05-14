@@ -220,7 +220,7 @@ jobs:
         id: setup-ndk
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r25b
+          ndk-version: r27
           add-to-path: false
       - name: Build and run tests
         run: |
