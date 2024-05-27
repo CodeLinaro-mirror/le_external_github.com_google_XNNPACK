@@ -134,6 +134,7 @@ MICROKERNEL_HDRS = [
     "src/xnnpack/lut.h",
     "src/xnnpack/maxpool.h",
     "src/xnnpack/packb.h",
+    "src/xnnpack/packq.h",
     "src/xnnpack/packw.h",
     "src/xnnpack/packx.h",
     "src/xnnpack/pad.h",

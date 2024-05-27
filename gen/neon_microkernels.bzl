@@ -879,6 +879,7 @@ ALL_NEON_MICROKERNEL_SRCS = [
     "src/u8-vclamp/u8-vclamp-neon-u64.c",
     "src/u32-filterbank-accumulate/gen/u32-filterbank-accumulate-neon-x1.c",
     "src/u32-filterbank-accumulate/gen/u32-filterbank-accumulate-neon-x2.c",
+    "src/x8-packq/x8-packq-neon-f32qp8-u2.c",
     "src/x8-transposec/gen/x8-transposec-8x8-multi-dec-zip-neon.c",
     "src/x8-transposec/gen/x8-transposec-8x8-multi-mov-zip-neon.c",
     "src/x8-transposec/gen/x8-transposec-8x8-multi-switch-zip-neon.c",

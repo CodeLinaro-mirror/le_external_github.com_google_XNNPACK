@@ -1179,6 +1179,14 @@ IF(XNNPACK_BUILD_TESTS)
   TARGET_INCLUDE_DIRECTORIES(convolution-test-helpers PRIVATE include src)
   TARGET_LINK_LIBRARIES(convolution-test-helpers PRIVATE fp16)
 
+  ADD_LIBRARY(packq-microkernel-tester STATIC test/packq-microkernel-tester.cc)
+  TARGET_INCLUDE_DIRECTORIES(packq-microkernel-tester PRIVATE . include src test)
+  TARGET_LINK_LIBRARIES(packq-microkernel-tester PRIVATE XNNPACK fp16 pthreadpool GTest::gtest)
+
+  ADD_LIBRARY(packq-benchmark STATIC test/packq-benchmark.cc)
+  TARGET_INCLUDE_DIRECTORIES(packq-benchmark PRIVATE . include src)
+  TARGET_LINK_LIBRARIES(packq-benchmark PRIVATE XNNPACK benchmark::benchmark bench-utils)
+
   IF(XNNPACK_BUILD_LIBRARY)
     # ---[ Build size tests
     ADD_EXECUTABLE(operator-size-test test/operator-size.c)
@@ -3314,6 +3322,12 @@ IF(XNNPACK_BUILD_TESTS)
   TARGET_LINK_LIBRARIES(x32-packb-test PRIVATE hardware-config logging microkernels-all packing)
   ADD_TEST(NAME x32-packb-test COMMAND x32-packb-test)
 
+  ADD_EXECUTABLE(x8-packq-test test/x8-packq.cc)
+  TARGET_INCLUDE_DIRECTORIES(x8-packq-test PRIVATE include src test)
+  TARGET_LINK_LIBRARIES(x8-packq-test PRIVATE pthreadpool GTest::gtest GTest::gtest_main)
+  TARGET_LINK_LIBRARIES(x8-packq-test PRIVATE packq-microkernel-tester hardware-config logging microkernels-all packing)
+  ADD_TEST(NAME x8-packq-test COMMAND x8-packq-test)
+
   ADD_EXECUTABLE(x8-packw-test test/x8-packw.cc)
   TARGET_INCLUDE_DIRECTORIES(x8-packw-test PRIVATE include src test)
   TARGET_LINK_LIBRARIES(x8-packw-test PRIVATE pthreadpool GTest::gtest GTest::gtest_main)
@@ -4452,6 +4466,11 @@ IF(XNNPACK_BUILD_BENCHMARKS)
   TARGET_INCLUDE_DIRECTORIES(x24-transpose-bench PRIVATE . include src)
   TARGET_LINK_LIBRARIES(x24-transpose-bench PRIVATE benchmark::benchmark pthreadpool)
   TARGET_LINK_LIBRARIES(x24-transpose-bench PRIVATE bench-utils hardware-config logging microkernels-all microparams-init)
+
+  ADD_EXECUTABLE(x8-packq-bench bench/x8-packq.cc)
+  TARGET_INCLUDE_DIRECTORIES(x8-packq-bench PRIVATE . include src)
+  TARGET_LINK_LIBRARIES(x8-packq-bench PRIVATE benchmark::benchmark pthreadpool)
+  TARGET_LINK_LIBRARIES(x8-packq-bench PRIVATE packq-benchmark bench-utils hardware-config logging microkernels-all packing)
 
   ADD_EXECUTABLE(x8-packw-bench bench/x8-packw.cc)
   TARGET_INCLUDE_DIRECTORIES(x8-packw-bench PRIVATE . include src)
