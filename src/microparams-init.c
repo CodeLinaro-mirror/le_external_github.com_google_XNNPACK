@@ -2577,8 +2577,6 @@ size_t xnn_init_f32_qc4w_minmax_avx512vnni_madd_params(
   params->avx512vnni.max = output_max;
   params->avx512vnni.sign_mask = 0x80;
   params->avx512vnni.mask = 0x0F;
-  params->avx512vnni.kernel_sign_mask1 = 0x08;
-  params->avx512vnni.kernel_sign_mask2 = 0x88;
   params->avx512vnni.gfni_shl4 = INT64_C(0);
   return sizeof(params->avx512vnni);
 }

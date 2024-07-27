@@ -188,11 +188,10 @@ __m512i _mm512_dpbusd_epi32_madd(__m512i i32, const __m512i u8, const __m512i u4
 // AVXVNNI replacement that uses vpmaddubsw.
 // i4h is int4 in upper 4 bits.  Low bits are zero.
 static XNN_INTRINSIC
-__m256i _mm256_dpbusd_epi32_bw(__m256i i32, const __m256i u8, const __m256i i4h) {
+__m256i _mm256_dpbusd_epi32_bw(__m256i i32, const __m256i u8, const __m256i u4h) {
   const __m256i vzero_point = _mm256_set1_epi8(0x08);
   const __m256i v16 = _mm256_set1_epi16(16);  // accumulators are times 16
-  const __m256i i4l = _mm256_srli_epi32(i4h, 4);   // move high nibble to low 4 bits
-  const __m256i u4 = _mm256_xor_si256(i4l, vzero_point);  // convert int4 to uint4
+  const __m256i u4 = _mm256_srli_epi32(u4h, 4);   // move high nibble to low 4 bits
   const __m256i i4 = _mm256_sub_epi8(u4, vzero_point);  // convert uint4 to int4
   const __m256i i12 = _mm256_maddubs_epi16(u8, i4);  // u8 * i4 = i12
   const __m256i v = _mm256_madd_epi16(i12, v16);  // convert 16 bits to 32 bits
