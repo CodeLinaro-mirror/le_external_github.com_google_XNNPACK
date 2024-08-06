@@ -9,7 +9,6 @@
 #include <array>
 #include <bitset>
 #include <cassert>
-#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <functional>

@@ -766,6 +766,7 @@ xnnpack_microkernel_cc_library(
     srcs_prod = ["src/amalgam/gen/scalar.c"],
     srcs_test = ALL_SCALAR_MICROKERNEL_SRCS,
     deps = MICROKERNEL_DEPS + [
+        ":config_hdrs",
         "@FP16",
         "@FXdiv",
     ],
@@ -1784,9 +1785,12 @@ xnnpack_cc_library(
     deps = [
         ":common",
         ":config_hdrs",
+        ":logging",
         ":math",
         ":operator_h",
+        ":params",
         ":unaligned",
+        ":xnnpack_h",
         "@FP16",
     ] + xnnpack_if_kleidiai_enabled([
         "@KleidiAI//kai/ukernels/matmul",
@@ -2007,6 +2011,7 @@ xnnpack_cc_library(
     ],
     deps = [
         ":allocator",
+        ":logging",
         ":microkernel_configs",
         ":microparams",
         ":params",
@@ -2040,10 +2045,12 @@ xnnpack_cc_library(
     gcc_copts = xnnpack_gcc_std_copts(),
     msvc_copts = xnnpack_msvc_std_copts(),
     deps = [
-        ":cache",
+        ":allocator",
         ":common",
+        ":logging",
         ":math",
         ":operator_h",
+        ":params",
         ":xnnpack_h",
     ],
 )
@@ -2076,6 +2083,7 @@ xnnpack_cc_library(
         ":microkernel_configs",
         ":microkernel_type",
         ":microkernel_utils",
+        ":microkernels_h",
         ":microparams_init",
         ":normalization",
         ":operator_type",
@@ -2083,6 +2091,7 @@ xnnpack_cc_library(
         ":packing",
         ":params",
         ":post_operation",
+        ":quantization",
         ":xnnpack_h",
         "@FP16",
         "@pthreadpool",
@@ -2226,6 +2235,9 @@ xnnpack_cc_library(
         ":allocator",
         ":build_identifier",
         ":common",
+        ":config_hdrs",
+        ":hardware_config",
+        ":init_once",
         ":logging",
         ":math",
         ":microkernels_h",
@@ -2234,6 +2246,7 @@ xnnpack_cc_library(
         ":operators",
         ":params",
         ":subgraph",
+        "@pthreadpool",
     ],
 )
 
@@ -2257,17 +2270,11 @@ xnnpack_cc_library(
     visibility = xnnpack_visibility(),
     deps = [
         ":allocator",
-        ":build_identifier",
-        ":common",
+        ":hardware_config",
+        ":init_once",
         ":logging",
-        ":math",
-        ":microkernels_h",
-        ":microparams",
-        ":microparams_init",
-        ":operators",
         ":params",
-        ":prod_microkernels",
-        ":subgraph",
+        "@pthreadpool",
     ],
 )
 
@@ -2291,16 +2298,11 @@ xnnpack_cc_library(
     visibility = xnnpack_visibility(),
     deps = [
         ":allocator",
-        ":build_identifier",
-        ":common",
+        ":hardware_config",
+        ":init_once",
         ":logging",
-        ":math",
-        ":microkernels_h",
-        ":microparams",
-        ":microparams_init",
-        ":operators",
         ":params",
-        ":prod_microkernels",
+        "@pthreadpool",
     ],
 )
 

@@ -8,7 +8,6 @@
 
 #include <stdlib.h>
 
-#include <cstddef>
 #include <limits>
 #include <memory>
 #include <type_traits>
