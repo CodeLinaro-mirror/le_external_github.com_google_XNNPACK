@@ -18,6 +18,10 @@ def xnnpack_gcc_std_copts():
     """GCC-like compiler flags to specify language standard for C sources."""
     return ["-std=c99"]
 
+def xnnpack_gxx_std_copts():
+    """GCC-like compiler flags to specify language standard for C sources."""
+    return []
+
 def xnnpack_msvc_std_copts():
     """MSVC compiler flags to specify language standard for C sources."""
     return ["/Drestrict="]
