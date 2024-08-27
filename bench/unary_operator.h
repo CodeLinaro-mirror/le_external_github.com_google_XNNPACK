@@ -17,8 +17,8 @@
 #include <random>
 #include <vector>
 
-#include <fp16/fp16.h>
 #include "bench/utils.h"
+#include "xnnpack/math.h"
 #include <benchmark/benchmark.h>
 #ifdef BENCHMARK_TENSORFLOW_LITE
 #include "flatbuffers/include/flatbuffers/flatbuffers.h"
@@ -29,13 +29,6 @@
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 #endif  // BENCHMARK_TENSORFLOW_LITE
-
-struct float16 {
-  uint16_t value;
-
-  float16() = default;
-  float16(float value) : value(fp16_ieee_from_fp32_value(value)) {}  // NOLINT
-};
 
 template <typename In, typename Out, typename Create, typename Reshape,
           typename Setup>
@@ -101,7 +94,7 @@ static void benchmark_unary_operator(Create create, Reshape reshape,
   state.counters["elements"] = benchmark::Counter(
       uint64_t(state.iterations()) * batch_size, benchmark::Counter::kIsRate);
 
-  const size_t bytes_per_iteration = 2 * batch_size * sizeof(uint16_t);
+  const size_t bytes_per_iteration = batch_size * (sizeof(In) + sizeof(Out));
   state.counters["bytes"] =
       benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration,
                          benchmark::Counter::kIsRate);
@@ -114,8 +107,12 @@ struct TypeToTfliteType {
   using type = T;
 };
 template <>
-struct TypeToTfliteType<float16> {
+struct TypeToTfliteType<xnn_float16_t> {
   using type = TfLiteFloat16;
+};
+template <>
+struct TypeToTfliteType<xnn_bfloat16_t> {
+  using type = TfLiteBFloat16;
 };
 
 template <typename In, typename Out, class BuildInQuantization,

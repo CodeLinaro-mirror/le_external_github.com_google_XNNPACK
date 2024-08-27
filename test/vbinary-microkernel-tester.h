@@ -18,15 +18,6 @@
 #include "xnnpack/isa-checks.h"
 #include "xnnpack/microfnptr.h"
 
-struct Float16 {
-  uint16_t value;
-
-  Float16() = default;
-  Float16(float value) : value(fp16_ieee_from_fp32_value(value)) {}
-
-  operator float() const { return fp16_ieee_to_fp32_value(value); }
-};
-
 class VBinaryMicrokernelTester {
  public:
   enum class OpType {

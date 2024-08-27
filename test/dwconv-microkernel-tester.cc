@@ -978,34 +978,37 @@ void DWConvMicrokernelTester::Test(
   xnnpack::ReplicableRandomDevice rng;
   std::uniform_real_distribution<float> f32dist;
 
-  std::vector<const uint16_t*> indirection((width() - 1) * step() +
+  std::vector<const xnn_float16_t*> indirection((width() - 1) * step() +
                                            kernel_tile());
-  std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+  std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
                               indirection.size() * channels());
-  std::vector<uint16_t> kernel(channels() * kernel_tile());
-  std::vector<uint16_t> bias(channels());
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> packed_weights(
+  std::vector<xnn_float16_t> kernel(channels() * kernel_tile());
+  std::vector<xnn_float16_t> bias(channels());
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> packed_weights(
       (kernel_tile() + 1) * packed_channels());
-  std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-  std::vector<uint16_t> output((width() - 1) * output_stride() + channels());
+  std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+  std::vector<xnn_float16_t> output((width() - 1) * output_stride() + channels());
   std::vector<float> output_ref(width() * channels());
 
   for (size_t iteration = 0; iteration < iterations(); iteration++) {
     std::generate(input.begin(), input.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::generate(kernel.begin(), kernel.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::generate(bias.begin(), bias.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::fill(zero.begin(), zero.end(), 0);
     std::fill(output_ref.begin(), output_ref.end(), 0.0f);
-    std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+    std::fill(output.begin(), output.end(), std::nanf(""));
 
     std::fill(packed_weights.begin(), packed_weights.end(), 0);
     xnn_pack_f16_dwconv_ghw_w(
         kernel_tile(), 0, 0, kernel_tile(), 1, channels(), channel_tile(),
-        channel_tile(), channel_tile(), kernel.data(), bias.data(),
-        /*scale=*/nullptr, packed_weights.data(),
+        channel_tile(), channel_tile(), 
+        reinterpret_cast<const uint16_t*>(kernel.data()), 
+        reinterpret_cast<const uint16_t*>(bias.data()),
+        /*scale=*/nullptr, 
+        reinterpret_cast<uint16_t*>(packed_weights.data()),
         /*per_tile_extra_bytes=*/0, /*per_subtile_extra_bytes=*/0,
         /*params=*/nullptr);
     for (size_t i = 0; i < indirection.size(); i++) {
@@ -1021,12 +1024,11 @@ void DWConvMicrokernelTester::Test(
     // Compute reference results, without clamping.
     for (size_t x = 0; x < width(); x++) {
       for (size_t c = 0; c < channels(); c++) {
-        float acc = fp16_ieee_to_fp32_value(bias[c]);
+        float acc = bias[c];
         for (size_t k = 0; k < kernel_tile(); k++) {
           if (indirection[x * step() + k] != zero.data()) {
-            acc += fp16_ieee_to_fp32_value(
-                       indirection[x * step() + k][c + input_offset()]) *
-                   fp16_ieee_to_fp32_value(kernel[c * kernel_tile() + k]);
+            acc += indirection[x * step() + k][c + input_offset()] *
+                   kernel[c * kernel_tile() + k];
           }
         }
         output_ref[x * channels() + c] = acc;
@@ -1039,17 +1041,17 @@ void DWConvMicrokernelTester::Test(
     const float accumulated_max =
         *std::max_element(output_ref.cbegin(), output_ref.cend());
     const float accumulated_range = accumulated_max - accumulated_min;
-    const float output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(
+    const float output_min = xnn_float16_t(
         accumulated_min +
-        accumulated_range / 255.0f * static_cast<float>(qmin())));
-    const float output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(
+        accumulated_range / 255.0f * static_cast<float>(qmin()));
+    const float output_max = xnn_float16_t(
         accumulated_max -
-        accumulated_range / 255.0f * static_cast<float>(255 - qmax())));
+        accumulated_range / 255.0f * static_cast<float>(255 - qmax()));
 
     // Prepare parameters.
     xnn_f16_minmax_params params;
-    init_params(&params, fp16_ieee_from_fp32_value(output_min),
-                fp16_ieee_from_fp32_value(output_max));
+    init_params(&params, output_min,
+                output_max);
 
     // Clamp reference results.
     for (float& output_val : output_ref) {
@@ -1058,22 +1060,22 @@ void DWConvMicrokernelTester::Test(
 
     // Call optimized micro-kernel.
     dwconv_minmax(channels(), width(),
-                  reinterpret_cast<const void**>(indirection.data()),
+                  reinterpret_cast<const xnn_float16_t**>(indirection.data()),
                   packed_weights.data(), output.data(), step() * sizeof(void*),
-                  (output_stride() - channels()) * sizeof(uint16_t),
-                  input_offset() * sizeof(uint16_t), zero.data(), &params);
+                  (output_stride() - channels()) * sizeof(xnn_float16_t),
+                  input_offset() * sizeof(xnn_float16_t), zero.data(), &params);
 
     // Verify results.
     for (size_t x = 0; x < width(); x++) {
       for (size_t c = 0; c < channels(); c++) {
-        EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+        EXPECT_GE(output[x * output_stride() + c],
                   output_min)
             << "x = " << x << ", channel = " << c;
-        EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+        EXPECT_LE(output[x * output_stride() + c],
                   output_max)
             << "x = " << x << ", channel = " << c;
         EXPECT_NEAR(output_ref[x * channels() + c],
-                    fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+                    output[x * output_stride() + c],
                     std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) *
                                           1.0e-2f))
             << "x = " << x << ", channel = " << c;
@@ -1090,40 +1092,42 @@ void DWConvMicrokernelTester::Test(
 
   const size_t tile_size = xnn_dwconv_multipass_tile_size(
       kernel_size(), first_pass_tile(), middle_pass_tile(), last_pass_tile());
-  std::vector<const uint16_t*> indirection((width() - 1) * step() + tile_size);
-  std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+  std::vector<const xnn_float16_t*> indirection((width() - 1) * step() + tile_size);
+  std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
                               indirection.size() * channels());
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> buffer(
-      XNN_MULTIPASS_EXTRA_BYTES / sizeof(uint16_t) + channels());
-  std::vector<uint16_t> kernel(channels() * kernel_size());
-  std::vector<uint16_t> bias(channels());
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> packed_weights(
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> buffer(
+      XNN_MULTIPASS_EXTRA_BYTES / sizeof(xnn_float16_t) + channels());
+  std::vector<xnn_float16_t> kernel(channels() * kernel_size());
+  std::vector<xnn_float16_t> bias(channels());
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> packed_weights(
       xnn_dwconv_multipass_weights_size(tile_size, channels(), channel_tile(),
                                         channel_subtile(), channel_round(),
-                                        /*bias_element_size=*/sizeof(uint16_t),
+                                        /*bias_element_size=*/sizeof(xnn_float16_t),
                                         /*log2_filter_element_size=*/1,
                                         /*extra_weights_byte=*/0) /
-      sizeof(uint16_t));
-  std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-  std::vector<uint16_t> output((width() - 1) * output_stride() + channels());
+      sizeof(xnn_float16_t));
+  std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+  std::vector<xnn_float16_t> output((width() - 1) * output_stride() + channels());
   std::vector<float> output_ref(width() * channels());
 
   for (size_t iteration = 0; iteration < iterations(); iteration++) {
     std::generate(input.begin(), input.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::generate(kernel.begin(), kernel.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::generate(bias.begin(), bias.end(),
-                  [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+                  [&]() { return f32dist(rng); });
     std::fill(zero.begin(), zero.end(), 0);
     std::fill(output_ref.begin(), output_ref.end(), 0.0f);
-    std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+    std::fill(output.begin(), output.end(), std::nanf(""));
 
     std::fill(packed_weights.begin(), packed_weights.end(), 0);
     xnn_pack_f16_dwconv_ghw_w(
         first_pass_tile(), middle_pass_tile(), last_pass_tile(), kernel_size(),
         1, channels(), channel_tile(), channel_subtile(), channel_round(),
-        kernel.data(), bias.data(), /*scale=*/nullptr, packed_weights.data(),
+        reinterpret_cast<const uint16_t*>(kernel.data()), 
+        reinterpret_cast<const uint16_t*>(bias.data()), /*scale=*/nullptr, 
+        reinterpret_cast<uint16_t*>(packed_weights.data()),
         /*per_tile_extra_bytes=*/0, /*per_subtile_extra_bytes=*/0,
         /*params=*/nullptr);
     for (size_t i = 0; i < indirection.size(); i++) {
@@ -1139,12 +1143,11 @@ void DWConvMicrokernelTester::Test(
     // Compute reference results, without clamping.
     for (size_t x = 0; x < width(); x++) {
       for (size_t c = 0; c < channels(); c++) {
-        float acc = fp16_ieee_to_fp32_value(bias[c]);
+        float acc = bias[c];
         for (size_t k = 0; k < kernel_size(); k++) {
           if (indirection[x * step() + k] != zero.data()) {
-            acc += fp16_ieee_to_fp32_value(
-                       indirection[x * step() + k][c + input_offset()]) *
-                   fp16_ieee_to_fp32_value(kernel[c * kernel_size() + k]);
+            acc += indirection[x * step() + k][c + input_offset()] *
+                   kernel[c * kernel_size() + k];
           }
         }
         output_ref[x * channels() + c] = acc;
@@ -1157,17 +1160,17 @@ void DWConvMicrokernelTester::Test(
     const float accumulated_max =
         *std::max_element(output_ref.cbegin(), output_ref.cend());
     const float accumulated_range = accumulated_max - accumulated_min;
-    const float output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(
+    const float output_min = xnn_float16_t(
         accumulated_min +
-        accumulated_range / 255.0f * static_cast<float>(qmin())));
-    const float output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(
+        accumulated_range / 255.0f * static_cast<float>(qmin()));
+    const float output_max = xnn_float16_t(
         accumulated_max -
-        accumulated_range / 255.0f * static_cast<float>(255 - qmax())));
+        accumulated_range / 255.0f * static_cast<float>(255 - qmax()));
 
     // Prepare parameters.
     xnn_f16_minmax_params params;
-    init_params(&params, fp16_ieee_from_fp32_value(output_min),
-                fp16_ieee_from_fp32_value(output_max));
+    init_params(&params, output_min,
+                output_max);
 
     // Clamp reference results.
     for (float& output_val : output_ref) {
@@ -1183,24 +1186,24 @@ void DWConvMicrokernelTester::Test(
     int input_stride_elements = step() - input_advanced;
     // Call optimized micro-kernel.
     dwconv_minmax(channels(), width(),
-                  reinterpret_cast<const void**>(indirection.data()),
+                  reinterpret_cast<const xnn_float16_t**>(indirection.data()),
                   packed_weights.data(), output.data(),
                   input_stride_elements * sizeof(void*),
-                  (output_stride() - channels()) * sizeof(uint16_t),
-                  input_offset() * sizeof(uint16_t), zero.data(), kernel_size(),
+                  (output_stride() - channels()) * sizeof(xnn_float16_t),
+                  input_offset() * sizeof(xnn_float16_t), zero.data(), kernel_size(),
                   buffer.data(), &params);
 
     // Verify results.
     for (size_t x = 0; x < width(); x++) {
       for (size_t c = 0; c < channels(); c++) {
-        EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+        EXPECT_GE(output[x * output_stride() + c],
                   output_min)
             << "x = " << x << ", channel = " << c;
-        EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+        EXPECT_LE(output[x * output_stride() + c],
                   output_max)
             << "x = " << x << ", channel = " << c;
         EXPECT_NEAR(output_ref[x * channels() + c],
-                    fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+                    output[x * output_stride() + c],
                     std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) *
                                           1.0e-2f))
             << "x = " << x << ", channel = " << c

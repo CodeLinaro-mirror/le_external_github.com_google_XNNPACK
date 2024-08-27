@@ -21,7 +21,7 @@
 
 using Multiply2TestQS8 = BinaryTest<int8_t>;
 using Multiply2TestQU8 = BinaryTest<uint8_t>;
-using Multiply2TestF16 = BinaryTest<uint16_t>;
+using Multiply2TestF16 = BinaryTest<xnn_float16_t>;
 using Multiply2TestF32 = BinaryTest<float>;
 using MultiplyTestS32 = BinaryTest<int32_t>;
 
@@ -453,10 +453,10 @@ TEST_F(Multiply2TestQU8, matches_operator_api)
 
 TEST_F(Multiply2TestF16, matches_operator_api)
 {
-  std::generate(input1.begin(), input1.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::generate(input2.begin(), input2.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::fill(operator_output.begin(), operator_output.end(), UINT16_C(0x7E00) /* NaN */);
-  std::fill(subgraph_output.begin(), subgraph_output.end(), UINT16_C(0x7E00) /* NaN */);
+  std::generate(input1.begin(), input1.end(), [&]() { return f32dist(rng); });
+  std::generate(input2.begin(), input2.end(), [&]() { return f32dist(rng); });
+  std::fill(operator_output.begin(), operator_output.end(), std::nanf(""));
+  std::fill(subgraph_output.begin(), subgraph_output.end(), std::nanf(""));
 
   ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
 

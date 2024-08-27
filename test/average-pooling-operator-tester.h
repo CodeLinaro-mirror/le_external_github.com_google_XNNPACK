@@ -20,10 +20,10 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <fp16/fp16.h>
 #include "xnnpack.h"
 #include "xnnpack/aligned-allocator.h"
 #include "xnnpack/common.h"
+#include "xnnpack/math.h"
 #include "replicable_random_device.h"
 #include "pthreadpool.h"
 
@@ -491,8 +491,8 @@ class AveragePoolingOperatorTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<uint16_t> input((batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> output((batch_size() * output_height() * output_width() - 1) * output_pixel_stride() + channels());
+    std::vector<xnn_float16_t> input((batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> output((batch_size() * output_height() * output_width() - 1) * output_pixel_stride() + channels());
     std::vector<float> output_ref(batch_size() * output_height() * output_width() * channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
       std::unique_ptr<pthreadpool, decltype(&pthreadpool_destroy)> auto_threadpool{nullptr, pthreadpool_destroy};
@@ -505,8 +505,8 @@ class AveragePoolingOperatorTester {
         }
       }
 
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       // Compute reference results, without clamping.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -520,7 +520,7 @@ class AveragePoolingOperatorTester {
                 for (size_t px = 0; px < pooling_width(); px++) {
                   const size_t ix = ox * stride_width() + px - padding_left();
                   if (ix < input_width() && iy < input_height()) {
-                    acc += fp16_ieee_to_fp32_value(input[((i * input_height() + iy) * input_width() + ix) * input_pixel_stride() + c]);
+                    acc += input[((i * input_height() + iy) * input_width() + ix) * input_pixel_stride() + c];
                     n += 1;
                   }
                 }
@@ -537,8 +537,8 @@ class AveragePoolingOperatorTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min = accumulated_min + accumulated_range / 255.0f * float(qmin());
       float output_max = accumulated_max - accumulated_range / 255.0f * float(255 - qmax());
-      output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(output_min));
-      output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(output_max));
+      output_min = xnn_float16_t(output_min);
+      output_max = xnn_float16_t(output_max);
       if (accumulated_range == 0.0f) {
         output_min = -std::numeric_limits<float>::infinity();
         output_max = +std::numeric_limits<float>::infinity();
@@ -603,10 +603,10 @@ class AveragePoolingOperatorTester {
         for (size_t y = 0; y < output_height(); y++) {
           for (size_t x = 0; x < output_width(); x++) {
             for (size_t c = 0; c < channels(); c++) {
-              EXPECT_LE(fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]), output_max);
-              EXPECT_GE(fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]), output_min);
+              EXPECT_LE(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c], output_max);
+              EXPECT_GE(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c], output_min);
               EXPECT_NEAR(
-                  fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]),
+                  output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c],
                   output_ref[((i * output_height() + y) * output_width() + x) * channels() + c],
                   std::max(1.0e-3f, std::abs(output_ref[((i * output_height() + y) * output_width() + x) * channels() + c]) * 1.0e-2f)) <<
                 "in batch index " << i << ", pixel (" << y << ", " << x << "), channel " << c;
@@ -846,10 +846,10 @@ class AveragePoolingOperatorTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) + std::max<size_t>(
+    std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) + std::max<size_t>(
       (batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels(),
       (next_batch_size() * next_input_height() * next_input_width() - 1) * next_input_pixel_stride() + next_channels()));
-    std::vector<uint16_t> output(std::max<size_t>(
+    std::vector<xnn_float16_t> output(std::max<size_t>(
       (batch_size() * output_height() * output_width() - 1) * output_pixel_stride() + channels(),
       (next_batch_size() * next_output_height() * next_output_width() - 1) * next_output_pixel_stride() + next_channels()));
     std::vector<float> output_ref(batch_size() * output_height() * output_width() * channels());
@@ -865,8 +865,8 @@ class AveragePoolingOperatorTester {
         }
       }
 
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       // Compute reference results, without clamping.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -880,7 +880,7 @@ class AveragePoolingOperatorTester {
                 for (size_t px = 0; px < pooling_width(); px++) {
                   const size_t ix = ox * stride_width() + px - padding_left();
                   if (ix < input_width() && iy < input_height()) {
-                    acc += fp16_ieee_to_fp32_value(input[((i * input_height() + iy) * input_width() + ix) * input_pixel_stride() + c]);
+                    acc += input[((i * input_height() + iy) * input_width() + ix) * input_pixel_stride() + c];
                     n += 1;
                   }
                 }
@@ -897,8 +897,8 @@ class AveragePoolingOperatorTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min = accumulated_min + accumulated_range / 255.0f * float(qmin());
       float output_max = accumulated_max - accumulated_range / 255.0f * float(255 - qmax());
-      output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(output_min));
-      output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(output_max));
+      output_min = xnn_float16_t(output_min);
+      output_max = xnn_float16_t(output_max);
       if (accumulated_range == 0.0f) {
         output_min = -std::numeric_limits<float>::infinity();
         output_max = +std::numeric_limits<float>::infinity();
@@ -960,10 +960,10 @@ class AveragePoolingOperatorTester {
         for (size_t y = 0; y < output_height(); y++) {
           for (size_t x = 0; x < output_width(); x++) {
             for (size_t c = 0; c < channels(); c++) {
-              EXPECT_LE(fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]), output_max);
-              EXPECT_GE(fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]), output_min);
+              EXPECT_LE(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c], output_max);
+              EXPECT_GE(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c], output_min);
               EXPECT_NEAR(
-                  fp16_ieee_to_fp32_value(output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c]),
+                  output[((i * output_height() + y) * output_width() + x) * output_pixel_stride() + c],
                   output_ref[((i * output_height() + y) * output_width() + x) * channels() + c],
                   std::max(1.0e-3f, std::abs(output_ref[((i * output_height() + y) * output_width() + x) * channels() + c]) * 1.0e-2f)) <<
                 "in batch index " << i << ", pixel (" << y << ", " << x << "), channel " << c;
@@ -973,8 +973,8 @@ class AveragePoolingOperatorTester {
       }
 
       // Re-generate data for the second run.
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       // Compute reference results for the second run.
       for (size_t i = 0; i < next_batch_size(); i++) {
@@ -988,7 +988,7 @@ class AveragePoolingOperatorTester {
                 for (size_t px = 0; px < pooling_width(); px++) {
                   const size_t ix = ox * stride_width() + px - padding_left();
                   if (ix < next_input_width() && iy < next_input_height()) {
-                    acc += fp16_ieee_to_fp32_value(input[((i * next_input_height() + iy) * next_input_width() + ix) * next_input_pixel_stride() + c]);
+                    acc += input[((i * next_input_height() + iy) * next_input_width() + ix) * next_input_pixel_stride() + c];
                     n += 1;
                   }
                 }
@@ -1034,10 +1034,10 @@ class AveragePoolingOperatorTester {
         for (size_t y = 0; y < next_output_height(); y++) {
           for (size_t x = 0; x < next_output_width(); x++) {
             for (size_t c = 0; c < next_channels(); c++) {
-              EXPECT_LE(fp16_ieee_to_fp32_value(output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c]), output_max);
-              EXPECT_GE(fp16_ieee_to_fp32_value(output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c]), output_min);
+              EXPECT_LE(output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c], output_max);
+              EXPECT_GE(output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c], output_min);
               EXPECT_NEAR(
-                  fp16_ieee_to_fp32_value(output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c]),
+                  output[((i * next_output_height() + y) * next_output_width() + x) * next_output_pixel_stride() + c],
                   next_output_ref[((i * next_output_height() + y) * next_output_width() + x) * next_channels() + c],
                   std::max(1.0e-3f, std::abs(next_output_ref[((i * next_output_height() + y) * next_output_width() + x) * next_channels() + c]) * 1.0e-2f)) <<
                 "in batch index " << i << ", pixel (" << y << ", " << x << "), channel " << c;

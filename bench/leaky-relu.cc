@@ -10,6 +10,7 @@
 
 #include "unary_operator.h"
 #include "bench/utils.h"
+#include "xnnpack/math.h"
 #include <benchmark/benchmark.h>
 #ifdef BENCHMARK_TENSORFLOW_LITE
 #include "flatbuffers/include/flatbuffers/flatbuffer_builder.h"
@@ -18,7 +19,7 @@
 
 
 static void xnnpack_leaky_relu_f16(benchmark::State& state) {
-  benchmark_unary_operator<float16, float16>(
+  benchmark_unary_operator<xnn_float16_t, xnn_float16_t>(
       [](uint32_t flags, xnn_operator_t* op) {
         return xnn_create_leaky_relu_nc_f16(
 
@@ -60,7 +61,7 @@ static void xnnpack_leaky_relu_qu8(benchmark::State& state) {
 }
 
 BENCHMARK(xnnpack_leaky_relu_f16)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
+    ->Apply(benchmark::utils::UnaryElementwiseParameters<xnn_float16_t, xnn_float16_t>)
     ->UseRealTime();
 BENCHMARK(xnnpack_leaky_relu_f32)
     ->Apply(benchmark::utils::UnaryElementwiseParameters<float, float>)
@@ -73,7 +74,7 @@ BENCHMARK(xnnpack_leaky_relu_qu8)
     ->UseRealTime();
 
 BENCHMARK(xnnpack_leaky_relu_f16)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
+    ->Apply(benchmark::utils::UnaryElementwiseParameters<xnn_float16_t, xnn_float16_t>)
     ->UseRealTime();
 BENCHMARK(xnnpack_leaky_relu_f32)
     ->Apply(benchmark::utils::UnaryElementwiseParameters<float, float>)

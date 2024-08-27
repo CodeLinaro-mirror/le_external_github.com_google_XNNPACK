@@ -155,7 +155,7 @@ class PackWMicrokernelTester {
     const uint16_t* bias_data = nullbias() ? nullptr : bias.data();
 
     // Compute reference results.
-    xnn_pack_f16_gemm_goi_w(g(), n(), packed_k(), nr(), kr(), sr(),
+    xnn_pack_x16_gemm_goi_w(g(), n(), packed_k(), nr(), kr(), sr(),
       reinterpret_cast<const uint16_t*>(padded_weights.data()),
       reinterpret_cast<const uint16_t*>(bias_data),
       /*scale=*/nullptr,

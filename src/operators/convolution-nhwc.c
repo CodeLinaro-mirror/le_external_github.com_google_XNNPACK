@@ -791,10 +791,10 @@ enum xnn_status xnn_create_convolution2d_nhwc_qd8_f16_qc8w(
         xnn_operator_type_to_string(xnn_operator_type_convolution_nhwc_qd8_f16_qc8w));
     return xnn_status_invalid_parameter;
   }
-  const uint16_t fp16_output_min = fp16_ieee_from_fp32_value(output_min);
-  const uint16_t fp16_output_max = fp16_ieee_from_fp32_value(output_max);
-  const float rounded_output_min = fp16_ieee_to_fp32_value(fp16_output_min);
-  const float rounded_output_max = fp16_ieee_to_fp32_value(fp16_output_max);
+  const xnn_float16 fp16_output_min = xnn_fp16_ieee_from_fp32_value(output_min);
+  const xnn_float16 fp16_output_max = xnn_fp16_ieee_from_fp32_value(output_max);
+  const float rounded_output_min = xnn_fp16_ieee_to_fp32_value(fp16_output_min);
+  const float rounded_output_max = xnn_fp16_ieee_to_fp32_value(fp16_output_max);
   if (rounded_output_min >= rounded_output_max) {
     xnn_log_error(
       "failed to create %s operator with [%.7g, %.7g] output range: lower bound must be below upper bound",
@@ -1424,10 +1424,10 @@ enum xnn_status xnn_create_convolution2d_nhwc_f16(
     return xnn_status_invalid_parameter;
   }
 
-  const uint16_t fp16_output_min = fp16_ieee_from_fp32_value(output_min);
-  const uint16_t fp16_output_max = fp16_ieee_from_fp32_value(output_max);
-  const float rounded_output_min = fp16_ieee_to_fp32_value(fp16_output_min);
-  const float rounded_output_max = fp16_ieee_to_fp32_value(fp16_output_max);
+  const xnn_float16 fp16_output_min = xnn_fp16_ieee_from_fp32_value(output_min);
+  const xnn_float16 fp16_output_max = xnn_fp16_ieee_from_fp32_value(output_max);
+  const float rounded_output_min = xnn_fp16_ieee_to_fp32_value(fp16_output_min);
+  const float rounded_output_max = xnn_fp16_ieee_to_fp32_value(fp16_output_max);
   if (rounded_output_min >= rounded_output_max) {
     xnn_log_error(
       "failed to create %s operator with [%.7g, %.7g] output range: lower bound must be below upper bound",
@@ -1477,7 +1477,7 @@ enum xnn_status xnn_create_convolution2d_nhwc_f16(
   xnn_pack_dwconv_hwg_w_fn pack_dwconv_hwg_w = (xnn_pack_dwconv_hwg_w_fn) xnn_pack_f16_dwconv_hwg_w;
   xnn_pack_dwconv_ghw_w_fn pack_dwconv_ghw_w = (xnn_pack_dwconv_ghw_w_fn) xnn_pack_f16_dwconv_ghw_w;
   xnn_packw_gemm_goi_ukernel_fn pack_gemm_goi_w = (xnn_packw_gemm_goi_ukernel_fn) gemm_config->pack_gemm_goi;
-  xnn_pack_conv_kgo_w_fn pack_conv_kgo_w = (xnn_pack_conv_kgo_w_fn) xnn_pack_f16_conv_kgo_w;
+  xnn_pack_conv_kgo_w_fn pack_conv_kgo_w = (xnn_pack_conv_kgo_w_fn) xnn_pack_x16_conv_kgo_w;
   xnn_pack_conv_goki_w_fn pack_conv_goki_w = (xnn_pack_conv_goki_w_fn) xnn_pack_f16_conv_goki_w;
   if (flags & XNN_FLAG_FP32_STATIC_WEIGHTS) {
     pack_vmulcaddc_w = (xnn_pack_vmulcaddc_w_fn) xnn_pack_f32_to_f16_vmulcaddc_w;

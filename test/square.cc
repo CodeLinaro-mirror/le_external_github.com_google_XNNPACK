@@ -18,7 +18,7 @@
 #include "xnnpack/subgraph.h"
 #include "subgraph-unary-tester.h"
 
-using SquareTestF16 = UnaryTest<uint16_t>;
+using SquareTestF16 = UnaryTest<xnn_float16_t>;
 using SquareTestF32 = UnaryTest<float>;
 
 TEST_F(SquareTestF16, define)
@@ -94,9 +94,9 @@ TEST_F(SquareTestF32, define)
 TEST_F(SquareTestF16, matches_operator_api)
 {
   std::uniform_real_distribution<float> f32dist(-255.0f, 255.0f);
-  std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::fill(operator_output.begin(), operator_output.end(), UINT16_C(0x7E00) /* NaN */);
-  std::fill(subgraph_output.begin(), subgraph_output.end(), UINT16_C(0x7E00) /* NaN */);
+  std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+  std::fill(operator_output.begin(), operator_output.end(), std::nanf(""));
+  std::fill(subgraph_output.begin(), subgraph_output.end(), std::nanf(""));
 
   ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
 

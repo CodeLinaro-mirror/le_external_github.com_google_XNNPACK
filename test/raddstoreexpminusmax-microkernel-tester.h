@@ -49,40 +49,40 @@ class RAddStoreExpMinusMaxMicrokernelTester {
     // However, the range is still narrow enough that double-precision exp doesn't overflow.
     std::uniform_real_distribution<float> f32dist(15.0f, 20.0f);
 
-    std::vector<uint16_t> x(elements() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> y(elements());
+    std::vector<xnn_float16_t> x(elements() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> y(elements());
     std::vector<float> y_ref(elements());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(x.begin(), x.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(y.begin(), y.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(x.begin(), x.end(), [&]() { return f32dist(rng); });
+      std::fill(y.begin(), y.end(), std::nanf(""));
 
       // Compute reference results.
       float sum_ref = 0.0f;
       float x_max_as_float = -std::numeric_limits<float>::infinity();
       for (size_t i = 0; i < elements(); i++) {
-        x_max_as_float = std::max(x_max_as_float, fp16_ieee_to_fp32_value(x[i]));
+        x_max_as_float = std::max<float>(x_max_as_float, x[i]);
       }
-      const uint16_t x_max_as_half = fp16_ieee_from_fp32_value(x_max_as_float);
+      const xnn_float16_t x_max_as_half = x_max_as_float;
       for (size_t i = 0; i < elements(); i++) {
-        const float y_ref_value = exp(fp16_ieee_to_fp32_value(x[i]) - x_max_as_float);
+        const float y_ref_value = exp(x[i] - x_max_as_float);
         y_ref[i] = y_ref_value;
         sum_ref += y_ref_value;
       }
 
       // Call optimized micro-kernel.
-      uint16_t sum = UINT16_C(0x7E00) /* NaN */;
+      xnn_float16_t sum = std::nanf("");
       xnn_f16_expminus_params params;
       if (init_params) {
         init_params(&params);
       }
-      raddstoreexpminusmax(elements() * sizeof(uint16_t), x.data(), &x_max_as_half, y.data(), &sum, &params);
+      raddstoreexpminusmax(elements() * sizeof(xnn_float16_t), x.data(), &x_max_as_half, y.data(), &sum, &params);
 
       // Verify results.
       for (size_t i = 0; i < elements(); i++) {
-      EXPECT_NEAR(y_ref[i], fp16_ieee_to_fp32_value(y[i]), std::abs(y_ref[i]) * 5.0e-3f)
+      EXPECT_NEAR(y_ref[i], y[i], std::abs(y_ref[i]) * 5.0e-3f)
         << "element " << i << " / " << elements() << ", x_max " << x_max_as_float;
       }
-      ASSERT_NEAR(sum_ref, fp16_ieee_to_fp32_value(sum), std::abs(sum_ref) * 5.0e-3f)
+      ASSERT_NEAR(sum_ref, sum, std::abs(sum_ref) * 5.0e-3f)
         << "batch " << elements() << ", x_max " << x_max_as_float;
     }
   }

@@ -99,7 +99,7 @@ void GEMMBenchmark(benchmark::State& state, xnn_f32_gemm_minmax_ukernel_fn gemm,
 
 void GEMMBenchmark(benchmark::State& state, xnn_f16_gemm_minmax_ukernel_fn gemm,
                    xnn_init_f16_minmax_params_fn init_params,
-                   xnn_pack_f16_gemm_fn pack, size_t mr, size_t nr, size_t kr,
+                   xnn_pack_x16_gemm_fn pack, size_t mr, size_t nr, size_t kr,
                    size_t sr,
                    benchmark::utils::IsaCheckFunction isa_check = nullptr);
 

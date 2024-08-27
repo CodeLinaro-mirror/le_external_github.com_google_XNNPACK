@@ -13,7 +13,7 @@
 #endif  // BENCHMARK_TENSORFLOW_LITE
 
 static void xnnpack_square_root_f16(benchmark::State& state) {
-  benchmark_unary_operator<float16, float16>(
+  benchmark_unary_operator<xnn_float16_t, xnn_float16_t>(
       xnn_create_square_root_nc_f16, xnn_reshape_square_root_nc_f16,
       xnn_setup_square_root_nc_f16, state);
 }
@@ -25,7 +25,7 @@ static void xnnpack_square_root_f32(benchmark::State& state) {
 }
 
 BENCHMARK(xnnpack_square_root_f16)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
+    ->Apply(benchmark::utils::UnaryElementwiseParameters<xnn_float16_t, xnn_float16_t>)
     ->UseRealTime();
 BENCHMARK(xnnpack_square_root_f32)
   ->Apply(benchmark::utils::UnaryElementwiseParameters<float, float>)

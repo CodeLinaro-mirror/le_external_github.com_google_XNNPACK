@@ -46,24 +46,27 @@ static void bf16_gemm(benchmark::State& state,
   auto rng = std::mt19937(random_device());
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
 
-  std::vector<uint16_t> a(mc * kc + XNN_EXTRA_BYTES / sizeof(uint16_t));
+  std::vector<xnn_bfloat16_t> a(mc * kc + XNN_EXTRA_BYTES / sizeof(xnn_bfloat16_t));
   std::generate(a.begin(), a.end(), [&] { return fp32_to_bits(f32rng(rng)) >> 16; });
-  std::vector<uint16_t> k(nc * kc);
+  std::vector<xnn_bfloat16_t> k(nc * kc);
   std::generate(k.begin(), k.end(), [&] { return fp32_to_bits(f32rng(rng)) >> 16; });
-  std::vector<uint16_t> b(nc);
+  std::vector<xnn_bfloat16_t> b(nc);
   std::generate(b.begin(), b.end(), [&] { return fp32_to_bits(f32rng(rng)) >> 16; });
 
   const size_t w_elements = nc_stride * kc_stride + nc_stride;
   const size_t c_elements = mc * nc;
   const size_t num_buffers = 1 +
     benchmark::utils::DivideRoundUp<size_t>(benchmark::utils::GetMaxCacheSize(),
-      sizeof(uint16_t) * (w_elements + c_elements));
+      sizeof(xnn_bfloat16_t) * (w_elements + c_elements));
 
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> w(w_elements * num_buffers);
+  std::vector<xnn_bfloat16_t, AlignedAllocator<xnn_bfloat16_t, 64>> w(w_elements * num_buffers);
   std::fill(w.begin(), w.end(), 0);
-  xnn_pack_f16_gemm_goi_w(/*groups=*/1, nc, kc, nr, kr, sr,
-    k.data(), b.data(), /*scale=*/nullptr, w.data(), /*extra_bytes=*/0, /*params=*/nullptr);
-  std::vector<uint16_t> c(c_elements * num_buffers);
+  xnn_pack_x16_gemm_goi_w(/*groups=*/1, nc, kc, nr, kr, sr,
+                          reinterpret_cast<const uint16_t*>(k.data()),
+                          reinterpret_cast<const uint16_t*>(b.data()), /*scale=*/nullptr,
+                          reinterpret_cast<uint16_t*>(w.data()),
+                          /*extra_bytes=*/0, /*params=*/nullptr);
+  std::vector<xnn_bfloat16_t> c(c_elements * num_buffers);
   std::fill(c.begin(), c.end(), UINT16_C(0x7FC0) /* NaN */);
 
   // Prepare minmax parameters.
@@ -78,7 +81,7 @@ static void bf16_gemm(benchmark::State& state,
     // - W is not in cache (for any cache level)
     // - C is not in cache (for any cache level)
     state.PauseTiming();
-    benchmark::utils::PrefetchToL1(a.data(), a.size() * sizeof(uint16_t));
+    benchmark::utils::PrefetchToL1(a.data(), a.size() * sizeof(xnn_bfloat16_t));
     buffer_index = (buffer_index + 1) % num_buffers;
     state.ResumeTiming();
 
@@ -87,10 +90,10 @@ static void bf16_gemm(benchmark::State& state,
       for (uint32_t n = 0; n < nc; n += nr) {
         const uint32_t nb = min(nc - n, nr);
         gemm(
-          mb, nb, kc * sizeof(uint16_t),
-          a.data() + m * kc, kc * sizeof(uint16_t),
+          mb, nb, kc * sizeof(xnn_bfloat16_t),
+          a.data() + m * kc, kc * sizeof(xnn_bfloat16_t),
           w.data() + (nc_stride * buffer_index + n) * (kc_stride + 1),
-          c.data() + (mc * buffer_index + m) * nc + n, nc * sizeof(uint16_t), nr * sizeof(uint16_t),
+          c.data() + (mc * buffer_index + m) * nc + n, nc * sizeof(xnn_bfloat16_t), nr * sizeof(xnn_bfloat16_t),
           &params);
       }
     }

@@ -32,7 +32,7 @@ using InitParamsFunction = std::function<size_t(UKernelParams*)>;
 
 // Microkernel function, templated on the `params` type.
 template <typename UKernelParams>
-using UKernelFunction = void (*)(size_t, const void*, void*,
+using UKernelFunction = void (*)(size_t, const xnn_float16_t*, xnn_float16_t*,
                                  const UKernelParams* params);
 
 // Template function to generate unary benchmarks. Creates a vector of size
@@ -96,19 +96,18 @@ void f16_vunary_benchmark(benchmark::State& state,
   auto f32rng =
       std::bind(std::uniform_real_distribution<float>(range_min, range_max),
                 std::ref(rng));
-  auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
-
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> x(num_elements);
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> y(num_elements);
-  std::generate(x.begin(), x.end(), std::ref(f16rng));
-  std::fill(y.begin(), y.end(), UINT16_C(0x7E00) /* NaN */);
+  
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> x(num_elements);
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> y(num_elements);
+  std::generate(x.begin(), x.end(), f32rng);
+  std::fill(y.begin(), y.end(), std::nanf(""));
 
   UKernelParams params;
   if (init_params != nullptr) {
     init_params(&params);
   }
   for (auto _ : state) {
-    ukernel(num_elements * sizeof(uint16_t), x.data(), y.data(), &params);
+    ukernel(num_elements * sizeof(xnn_float16_t), x.data(), y.data(), &params);
   }
 
   const uint64_t cpu_frequency = benchmark::utils::GetCurrentCpuFrequency();
@@ -121,7 +120,7 @@ void f16_vunary_benchmark(benchmark::State& state,
       static_cast<uint64_t>(state.iterations()) * elements_per_iteration,
       benchmark::Counter::kIsRate);
 
-  const size_t bytes_per_iteration = 2 * num_elements * sizeof(uint16_t);
+  const size_t bytes_per_iteration = 2 * num_elements * sizeof(xnn_float16_t);
   state.counters["bytes"] = benchmark::Counter(
       static_cast<uint64_t>(state.iterations()) * bytes_per_iteration,
       benchmark::Counter::kIsRate);

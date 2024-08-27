@@ -184,7 +184,7 @@ class ScaledDotProductAttentionTestBase : public ::testing::Test {
   std::vector<T> subgraph_output;
 };
 
-using ScaledDotProductAttentionTestF16 = ScaledDotProductAttentionTestBase<uint16_t>;
+using ScaledDotProductAttentionTestF16 = ScaledDotProductAttentionTestBase<xnn_float16_t>;
 using ScaledDotProductAttentionTestF32 = ScaledDotProductAttentionTestBase<float>;
 
 TEST_F(ScaledDotProductAttentionTestF16, define) {
@@ -345,13 +345,13 @@ TEST_F(ScaledDotProductAttentionTestF16, matches_operator_api) {
   ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
 
   xnn_operator_t op = nullptr;
-  std::generate(query.begin(), query.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::generate(key.begin(), key.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::generate(value.begin(), value.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::generate(scale.begin(), scale.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::generate(mask.begin(), mask.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::fill(operator_output.begin(), operator_output.end(), UINT16_C(0x7E00) /* NaN */);
-  std::fill(subgraph_output.begin(), subgraph_output.end(), UINT16_C(0x7E00) /* NaN */);
+  std::generate(query.begin(), query.end(), [&]() { return f32dist(rng); });
+  std::generate(key.begin(), key.end(), [&]() { return f32dist(rng); });
+  std::generate(value.begin(), value.end(), [&]() { return f32dist(rng); });
+  std::generate(scale.begin(), scale.end(), [&]() { return f32dist(rng); });
+  std::generate(mask.begin(), mask.end(), [&]() { return f32dist(rng); });
+  std::fill(operator_output.begin(), operator_output.end(), std::nanf(""));
+  std::fill(subgraph_output.begin(), subgraph_output.end(), std::nanf(""));
 
   // Call operator API.
   const xnn_status status = xnn_create_scaled_dot_product_attention_nhtc_f16(cap_type, &cap_params, /*flags=*/0, &op);

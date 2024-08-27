@@ -17,15 +17,13 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <fp16/fp16.h>
 #include "xnnpack.h"
+#include "xnnpack/math.h"
 #include "xnnpack/microfnptr.h"
 #include "xnnpack/microparams.h"
 #include "replicable_random_device.h"
 
 class ReduceMicrokernelTester {
-  using FloatIt = std::vector<float>::iterator;
-  using UInt8It = std::vector<uint8_t>::iterator;
  public:
   enum class OpType {
     Max,
@@ -56,15 +54,13 @@ class ReduceMicrokernelTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist(-1.0f, 1.0f);
 
-    std::vector<float> input_float(batch_size());
-    std::vector<uint16_t> input(batch_size() + XNN_EXTRA_BYTES / sizeof(uint16_t));
+    std::vector<xnn_float16_t> input(batch_size() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input_float.begin(), input_float.end(), [&]() { return f32dist(rng); });
-      std::transform(input_float.begin(), input_float.end(), input.begin(), [](float f) { return fp16_ieee_from_fp32_value(f); });
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
 
       // Compute reference results.
-      FloatIt min, max;
-      std::tie(min, max) = std::minmax_element(input_float.begin(), input_float.begin() + batch_size());
+      std::vector<xnn_float16_t>::iterator min, max;
+      std::tie(min, max) = std::minmax_element(input.begin(), input.begin() + batch_size());
 
       // Prepare parameters.
       xnn_f16_default_params params;
@@ -73,23 +69,23 @@ class ReduceMicrokernelTester {
       }
 
       // Call optimized micro-kernel.
-      uint16_t output[2] = {UINT16_C(0x7E00) /* NaN */, UINT16_C(0x7E00)};
-      reduce(batch_size() * sizeof(uint16_t), input.data(), output, init_params != nullptr ? &params : nullptr);
+      xnn_float16_t output[2] = {std::nanf(""), std::nanf("")};
+      reduce(batch_size() * sizeof(xnn_float16_t), input.data(), output, init_params != nullptr ? &params : nullptr);
 
       // Verify results.
       switch (op_type) {
         case OpType::Max:
-          EXPECT_EQ(output[0], fp16_ieee_from_fp32_value(*max))
+          EXPECT_EQ(output[0], *max)
               << "with batch " << batch_size();
           break;
         case OpType::Min:
-          EXPECT_EQ(output[0], fp16_ieee_from_fp32_value(*min))
+          EXPECT_EQ(output[0], *min)
               << "with batch " << batch_size();
           break;
         case OpType::MinMax:
-          EXPECT_EQ(output[0], fp16_ieee_from_fp32_value(*min))
+          EXPECT_EQ(output[0], *min)
               << "with batch " << batch_size();
-          EXPECT_EQ(output[1], fp16_ieee_from_fp32_value(*max))
+          EXPECT_EQ(output[1], *max)
               << "with batch " << batch_size();
           break;
       }
@@ -105,7 +101,7 @@ class ReduceMicrokernelTester {
       std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
 
       // Compute reference results.
-      FloatIt min, max;
+      std::vector<float>::iterator min, max;
       std::tie(min, max) = std::minmax_element(input.begin(), input.begin() + batch_size());
 
       // Prepare parameters.
@@ -148,7 +144,7 @@ class ReduceMicrokernelTester {
       std::generate(input.begin(), input.end(), [&]() { return u8dist(rng); });
 
       // Compute reference results.
-      UInt8It min, max;
+      std::vector<uint8_t>::iterator min, max;
       std::tie(min, max) = std::minmax_element(input.begin(), input.begin() + batch_size());
 
       // Call optimized micro-kernel.

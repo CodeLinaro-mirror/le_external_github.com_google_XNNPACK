@@ -51,8 +51,7 @@ static void f16_igemm(benchmark::State& state,
   std::random_device random_device;
   auto rng = std::mt19937(random_device());
   auto f32rng = std::bind(std::uniform_real_distribution<float>(), std::ref(rng));
-  auto f16rng = std::bind(fp16_ieee_from_fp32_value, f32rng);
-
+  
   const size_t output_pixel_stride = group_output_channels;
   const size_t input_pixel_stride = group_input_channels;
   const size_t effective_kernel_height = (kernel_height - 1) * dilation + 1;
@@ -67,32 +66,35 @@ static void f16_igemm(benchmark::State& state,
   const size_t nc_stride = benchmark::utils::RoundUp<size_t>(group_output_channels, nr);
   const size_t kc_stride = benchmark::utils::RoundUp<size_t>(group_input_channels, kr * sr);
 
-  std::vector<uint16_t> a(input_height * input_width * input_pixel_stride + XNN_EXTRA_BYTES / sizeof(uint16_t));
-  std::generate(a.begin(), a.end(), std::ref(f16rng));
-  std::vector<uint16_t> k(group_output_channels * kernel_height * kernel_width * group_input_channels);
-  std::generate(k.begin(), k.end(), std::ref(f16rng));
-  std::vector<uint16_t> b(group_output_channels);
-  std::generate(b.begin(), b.end(), std::ref(f16rng));
+  std::vector<xnn_float16_t> a(input_height * input_width * input_pixel_stride + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+  std::generate(a.begin(), a.end(), f32rng);
+  std::vector<xnn_float16_t> k(group_output_channels * kernel_height * kernel_width * group_input_channels);
+  std::generate(k.begin(), k.end(), f32rng);
+  std::vector<xnn_float16_t> b(group_output_channels);
+  std::generate(b.begin(), b.end(), f32rng);
 
-  std::vector<uint16_t> z(group_input_channels + XNN_EXTRA_BYTES / sizeof(uint16_t));
+  std::vector<xnn_float16_t> z(group_input_channels + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
 
   const size_t w_elements = (kernel_size * kc_stride + 1) * nc_stride;
   const size_t i_elements = mc_stride * kernel_size;
   const size_t c_elements = output_height * output_width * output_pixel_stride;
   const size_t num_buffers = 1 +
     benchmark::utils::DivideRoundUp<size_t>(benchmark::utils::GetMaxCacheSize(),
-      sizeof(uint16_t) * (w_elements + c_elements) + sizeof(void*) * i_elements);
+      sizeof(xnn_float16_t) * (w_elements + c_elements) + sizeof(void*) * i_elements);
 
-  std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> w(w_elements * num_buffers);
+  std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> w(w_elements * num_buffers);
   std::fill(w.begin(), w.end(), 0);
   xnn_pack_f16_conv_goki_w(
-    /*groups=*/1, group_output_channels, kernel_size, group_input_channels,
-    nr, kr, sr, k.data(), b.data(), /*scale=*/nullptr, w.data(), /*extra_bytes=*/0, /*params=*/nullptr);
+      /*groups=*/1, group_output_channels, kernel_size, group_input_channels,
+      nr, kr, sr, reinterpret_cast<const uint16_t*>(k.data()), 
+      reinterpret_cast<const uint16_t*>(b.data()), 
+      /*scale=*/nullptr, reinterpret_cast<uint16_t*>(w.data()), 
+      /*extra_bytes=*/0, /*params=*/nullptr);
   for (size_t n = 1; n < num_buffers; n++) {
     std::copy(w.cbegin(), w.cbegin() + w_elements, w.begin() + n * w_elements);
   }
 
-  std::vector<const uint16_t*> i(i_elements * num_buffers);
+  std::vector<const xnn_float16_t*> i(i_elements * num_buffers);
   const size_t tiled_output_size = round_up(output_size, mr);
   xnn_indirection_init_conv2d(
       /*output_tile_size=*/mr,
@@ -112,18 +114,18 @@ static void f16_igemm(benchmark::State& state,
     std::copy(i.cbegin(), i.cbegin() + i_elements, i.begin() + n * i_elements);
   }
 
-  std::vector<uint16_t> c(c_elements * num_buffers);
-  std::fill(c.begin(), c.end(), UINT16_C(0x7E00) /* NaN */);
+  std::vector<xnn_float16_t> c(c_elements * num_buffers);
+  std::fill(c.begin(), c.end(), std::nanf(""));
 
   // Prepare minmax parameters.
   xnn_f16_minmax_params params;
   init_params(&params,
-    UINT16_C(0x7C00) /* inf */, UINT16_C(0xFC00) /* -inf */);
+    INFINITY, -INFINITY);
 
   size_t buffer_index = 0;
   for (auto _ : state) {
     state.PauseTiming();
-    benchmark::utils::PrefetchToL1(a.data(), a.size() * sizeof(uint16_t));
+    benchmark::utils::PrefetchToL1(a.data(), a.size() * sizeof(xnn_float16_t));
     buffer_index = (buffer_index + 1) % num_buffers;
     state.ResumeTiming();
 
@@ -132,10 +134,10 @@ static void f16_igemm(benchmark::State& state,
       for (uint32_t n = 0; n < group_output_channels; n += nr) {
         const uint32_t nb = min(group_output_channels - n, nr);
         igemm(
-          mb, nb, group_input_channels * sizeof(uint16_t), kernel_size * mr * sizeof(void*),
-          reinterpret_cast<const void**>(i.data()) + buffer_index * i_elements + m,
+          mb, nb, group_input_channels * sizeof(xnn_float16_t), kernel_size * mr * sizeof(void*),
+          reinterpret_cast<const xnn_float16_t**>(i.data()) + buffer_index * i_elements + m,
           w.data() + buffer_index * w_elements + n * (kc_stride * kernel_size + 1),
-          c.data() + buffer_index * c_elements + m * group_output_channels + n, group_output_channels * sizeof(uint16_t), nr * sizeof(uint16_t),
+          c.data() + buffer_index * c_elements + m * group_output_channels + n, group_output_channels * sizeof(xnn_float16_t), nr * sizeof(xnn_float16_t),
           0, z.data(), &params);
       }
     }

@@ -210,17 +210,17 @@ class AvgPoolMicrokernelTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<const uint16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
-    std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+    std::vector<const xnn_float16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
+    std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
       input_offset() + indirect_input.size() * channels());
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> output((output_pixels() - 1) * output_stride() + channels());
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> output((output_pixels() - 1) * output_stride() + channels());
     std::vector<float> output_ref(output_pixels() * channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(input.begin(), input.begin() + input_offset(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(uint16_t), input.end(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
+      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(xnn_float16_t), input.end(), std::nanf(""));
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
         indirect_input[i] = input.data() + i * channels();
@@ -238,9 +238,9 @@ class AvgPoolMicrokernelTester {
         for (size_t c = 0; c < channels(); c++) {
           float acc = 0.0f;
           for (size_t p = 0; p < pooling_elements(); p++) {
-            const uint16_t* row = indirect_input[x * step() + p];
+            const xnn_float16_t* row = indirect_input[x * step() + p];
             if (row != zero.data()) {
-              acc += fp16_ieee_to_fp32_value(row[c + input_offset()]);
+              acc += row[c + input_offset()];
             }
           }
           output_ref[x * channels() + c] = acc / float(pooling_elements());
@@ -253,10 +253,10 @@ class AvgPoolMicrokernelTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min_as_float = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
       float output_max_as_float = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-      const uint16_t output_min_as_half = fp16_ieee_from_fp32_value(output_min_as_float);
-      const uint16_t output_max_as_half = fp16_ieee_from_fp32_value(output_max_as_float);
-      output_min_as_float = fp16_ieee_to_fp32_value(output_min_as_half);
-      output_max_as_float = fp16_ieee_to_fp32_value(output_max_as_half);
+      const xnn_float16_t output_min_as_half = output_min_as_float;
+      const xnn_float16_t output_max_as_half = output_max_as_float;
+      output_min_as_float = output_min_as_half;
+      output_max_as_float = output_max_as_half;
 
       // Clamp reference results.
       for (float& output_value : output_ref) {
@@ -265,29 +265,29 @@ class AvgPoolMicrokernelTester {
 
       // Prepare parameters.
       xnn_f16_scaleminmax_params params;
-      init_params(&params, fp16_ieee_from_fp32_value(1.0f / float(pooling_elements())), output_min_as_half, output_max_as_half);
+      init_params(&params, 1.0f / float(pooling_elements()), output_min_as_half, output_max_as_half);
 
       // Call optimized micro-kernel.
       avgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        reinterpret_cast<const void**>(indirect_input.data()), input_offset() * sizeof(uint16_t), zero.data(),
+        reinterpret_cast<const xnn_float16_t**>(indirect_input.data()), input_offset() * sizeof(xnn_float16_t), zero.data(),
         output.data(),
         step() * sizeof(void*),
-        (output_stride() - channels()) * sizeof(uint16_t),
+        (output_stride() - channels()) * sizeof(xnn_float16_t),
         &params);
 
       // Verify results.
       for (size_t x = 0; x < output_pixels(); x++) {
         for (size_t c = 0; c < channels(); c++) {
-          EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_min_as_float)
+          EXPECT_GE(output[x * output_stride() + c], output_min_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
-          EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_max_as_float)
+          EXPECT_LE(output[x * output_stride() + c], output_max_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
           EXPECT_NEAR(
-              fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+              output[x * output_stride() + c],
               output_ref[x * channels() + c],
               std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) * 3.0e-3f))
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
@@ -302,18 +302,18 @@ class AvgPoolMicrokernelTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<const uint16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
-    std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+    std::vector<const xnn_float16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
+    std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
       input_offset() + indirect_input.size() * channels());
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> output((output_pixels() - 1) * output_stride() + channels());
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> output((output_pixels() - 1) * output_stride() + channels());
     std::vector<float> output_ref(output_pixels() * channels());
-    std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> buffer(XNN_EXTRA_BYTES / sizeof(uint16_t) + channels());
+    std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> buffer(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) + channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(input.begin(), input.begin() + input_offset(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(uint16_t), input.end(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
+      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(xnn_float16_t), input.end(), std::nanf(""));
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
         indirect_input[i] = input.data() + i * channels();
@@ -331,9 +331,9 @@ class AvgPoolMicrokernelTester {
         for (size_t c = 0; c < channels(); c++) {
           float acc = 0.0f;
           for (size_t p = 0; p < pooling_elements(); p++) {
-            const uint16_t* row = indirect_input[x * step() + p];
+            const xnn_float16_t* row = indirect_input[x * step() + p];
             if (row != zero.data()) {
-              acc += fp16_ieee_to_fp32_value(row[c + input_offset()]);
+              acc += row[c + input_offset()];
             }
           }
           output_ref[x * channels() + c] = acc / float(pooling_elements());
@@ -346,10 +346,10 @@ class AvgPoolMicrokernelTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min_as_float = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
       float output_max_as_float = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-      const uint16_t output_min_as_half = fp16_ieee_from_fp32_value(output_min_as_float);
-      const uint16_t output_max_as_half = fp16_ieee_from_fp32_value(output_max_as_float);
-      output_min_as_float = fp16_ieee_to_fp32_value(output_min_as_half);
-      output_max_as_float = fp16_ieee_to_fp32_value(output_max_as_half);
+      const xnn_float16_t output_min_as_half = output_min_as_float;
+      const xnn_float16_t output_max_as_half = output_max_as_float;
+      output_min_as_float = output_min_as_half;
+      output_max_as_float = output_max_as_half;
 
       // Clamp reference results.
       for (float& output_value : output_ref) {
@@ -358,29 +358,29 @@ class AvgPoolMicrokernelTester {
 
       // Prepare parameters.
       xnn_f16_scaleminmax_params params;
-      init_params(&params, fp16_ieee_from_fp32_value(1.0f / float(pooling_elements())), output_min_as_half, output_max_as_half);
+      init_params(&params, 1.0f / float(pooling_elements()), output_min_as_half, output_max_as_half);
 
       // Call optimized micro-kernel.
       avgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        reinterpret_cast<const void**>(indirect_input.data()), input_offset() * sizeof(uint16_t), zero.data(),
+        reinterpret_cast<const xnn_float16_t**>(indirect_input.data()), input_offset() * sizeof(xnn_float16_t), zero.data(),
         buffer.data(), output.data(),
         (step() - (packed_pooling_elements() - incremental_pooling_tile())) * sizeof(void*),
-        (output_stride() - channels()) * sizeof(uint16_t),
+        (output_stride() - channels()) * sizeof(xnn_float16_t),
         &params);
 
       // Verify results.
       for (size_t x = 0; x < output_pixels(); x++) {
         for (size_t c = 0; c < channels(); c++) {
-          EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_min_as_float)
+          EXPECT_GE(output[x * output_stride() + c], output_min_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
-          EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_max_as_float)
+          EXPECT_LE(output[x * output_stride() + c], output_max_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
           EXPECT_NEAR(
-              fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+              output[x * output_stride() + c],
               output_ref[x * channels() + c],
               std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) * 3.0e-3f))
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
@@ -766,19 +766,19 @@ class AvgPoolMicrokernelTester {
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> m32dist(0.1f, 0.5f);
 
-    std::vector<const uint16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
-    std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+    std::vector<const xnn_float16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
+    std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
       input_offset() + indirect_input.size() * channels());
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> multiplier(output_pixels());
-    std::vector<uint16_t> output((output_pixels() - 1) * output_stride() + channels());
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> multiplier(output_pixels());
+    std::vector<xnn_float16_t> output((output_pixels() - 1) * output_stride() + channels());
     std::vector<float> output_ref(output_pixels() * channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(input.begin(), input.begin() + input_offset(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(uint16_t), input.end(), UINT16_C(0x7E00) /* NaN */);
-      std::generate(multiplier.begin(), multiplier.end(), [&]() { return fp16_ieee_from_fp32_value(m32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
+      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(xnn_float16_t), input.end(), std::nanf(""));
+      std::generate(multiplier.begin(), multiplier.end(), [&]() { return m32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
         indirect_input[i] = input.data() + i * channels();
@@ -796,12 +796,12 @@ class AvgPoolMicrokernelTester {
         for (size_t c = 0; c < channels(); c++) {
           float acc = 0.0f;
           for (size_t p = 0; p < pooling_elements(); p++) {
-            const uint16_t* row = indirect_input[x * step() + p];
+            const xnn_float16_t* row = indirect_input[x * step() + p];
             if (row != zero.data()) {
-              acc += fp16_ieee_to_fp32_value(row[c + input_offset()]);
+              acc += row[c + input_offset()];
             }
           }
-          output_ref[x * channels() + c] = acc * fp16_ieee_to_fp32_value(multiplier[x]);
+          output_ref[x * channels() + c] = acc * multiplier[x];
         }
       }
 
@@ -811,10 +811,10 @@ class AvgPoolMicrokernelTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min_as_float = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
       float output_max_as_float = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-      const uint16_t output_min_as_half = fp16_ieee_from_fp32_value(output_min_as_float);
-      const uint16_t output_max_as_half = fp16_ieee_from_fp32_value(output_max_as_float);
-      output_min_as_float = fp16_ieee_to_fp32_value(output_min_as_half);
-      output_max_as_float = fp16_ieee_to_fp32_value(output_max_as_half);
+      const xnn_float16_t output_min_as_half = output_min_as_float;
+      const xnn_float16_t output_max_as_half = output_max_as_float;
+      output_min_as_float = output_min_as_half;
+      output_max_as_float = output_max_as_half;
 
       // Clamp reference results.
       for (float& output_value : output_ref) {
@@ -827,25 +827,25 @@ class AvgPoolMicrokernelTester {
 
       // Call optimized micro-kernel.
       pavgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        reinterpret_cast<const void**>(indirect_input.data()), input_offset() * sizeof(uint16_t), zero.data(),
+        reinterpret_cast<const xnn_float16_t**>(indirect_input.data()), input_offset() * sizeof(xnn_float16_t), zero.data(),
         multiplier.data(), output.data(),
         step() * sizeof(void*),
-        (output_stride() - channels()) * sizeof(uint16_t),
+        (output_stride() - channels()) * sizeof(xnn_float16_t),
         &params);
 
       // Verify results.
       for (size_t x = 0; x < output_pixels(); x++) {
         for (size_t c = 0; c < channels(); c++) {
-          EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_min_as_float)
+          EXPECT_GE(output[x * output_stride() + c], output_min_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
-          EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_max_as_float)
+          EXPECT_LE(output[x * output_stride() + c], output_max_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
           EXPECT_NEAR(
-              fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+              output[x * output_stride() + c],
               output_ref[x * channels() + c],
               std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) * 3.0e-3f))
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
@@ -861,20 +861,20 @@ class AvgPoolMicrokernelTester {
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> m32dist(0.1f, 0.5f);
 
-    std::vector<const uint16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
-    std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
+    std::vector<const xnn_float16_t*> indirect_input((output_pixels() - 1) * step() + packed_pooling_elements());
+    std::vector<xnn_float16_t> input(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) +
       input_offset() + indirect_input.size() * channels());
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> multiplier(output_pixels());
-    std::vector<uint16_t> output((output_pixels() - 1) * output_stride() + channels());
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> multiplier(output_pixels());
+    std::vector<xnn_float16_t> output((output_pixels() - 1) * output_stride() + channels());
     std::vector<float> output_ref(output_pixels() * channels());
-    std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> buffer(XNN_EXTRA_BYTES / sizeof(uint16_t) + channels());
+    std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> buffer(XNN_EXTRA_BYTES / sizeof(xnn_float16_t) + channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(input.begin(), input.begin() + input_offset(), UINT16_C(0x7E00) /* NaN */);
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(uint16_t), input.end(), UINT16_C(0x7E00) /* NaN */);
-      std::generate(multiplier.begin(), multiplier.end(), [&]() { return fp16_ieee_from_fp32_value(m32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
+      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(xnn_float16_t), input.end(), std::nanf(""));
+      std::generate(multiplier.begin(), multiplier.end(), [&]() { return m32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
         indirect_input[i] = input.data() + i * channels();
@@ -892,12 +892,12 @@ class AvgPoolMicrokernelTester {
         for (size_t c = 0; c < channels(); c++) {
           float acc = 0.0f;
           for (size_t p = 0; p < pooling_elements(); p++) {
-            const uint16_t* row = indirect_input[x * step() + p];
+            const xnn_float16_t* row = indirect_input[x * step() + p];
             if (row != zero.data()) {
-              acc += fp16_ieee_to_fp32_value(row[c + input_offset()]);
+              acc += row[c + input_offset()];
             }
           }
-          output_ref[x * channels() + c] = acc * fp16_ieee_to_fp32_value(multiplier[x]);
+          output_ref[x * channels() + c] = acc * multiplier[x];
         }
       }
 
@@ -907,10 +907,10 @@ class AvgPoolMicrokernelTester {
       const float accumulated_range = accumulated_max - accumulated_min;
       float output_min_as_float = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
       float output_max_as_float = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-      const uint16_t output_min_as_half = fp16_ieee_from_fp32_value(output_min_as_float);
-      const uint16_t output_max_as_half = fp16_ieee_from_fp32_value(output_max_as_float);
-      output_min_as_float = fp16_ieee_to_fp32_value(output_min_as_half);
-      output_max_as_float = fp16_ieee_to_fp32_value(output_max_as_half);
+      const xnn_float16_t output_min_as_half = output_min_as_float;
+      const xnn_float16_t output_max_as_half = output_max_as_float;
+      output_min_as_float = output_min_as_half;
+      output_max_as_float = output_max_as_half;
 
       // Clamp reference results.
       for (float& output_value : output_ref) {
@@ -923,25 +923,25 @@ class AvgPoolMicrokernelTester {
 
       // Call optimized micro-kernel.
       pavgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        reinterpret_cast<const void**>(indirect_input.data()), input_offset() * sizeof(uint16_t), zero.data(),
+        reinterpret_cast<const xnn_float16_t**>(indirect_input.data()), input_offset() * sizeof(xnn_float16_t), zero.data(),
         multiplier.data(), buffer.data(), output.data(),
         (step() - (packed_pooling_elements() - incremental_pooling_tile())) * sizeof(void*),
-        (output_stride() - channels()) * sizeof(uint16_t),
+        (output_stride() - channels()) * sizeof(xnn_float16_t),
         &params);
 
       // Verify results.
       for (size_t x = 0; x < output_pixels(); x++) {
         for (size_t c = 0; c < channels(); c++) {
-          EXPECT_GE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_min_as_float)
+          EXPECT_GE(output[x * output_stride() + c], output_min_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
-          EXPECT_LE(fp16_ieee_to_fp32_value(output[x * output_stride() + c]), output_max_as_float)
+          EXPECT_LE(output[x * output_stride() + c], output_max_as_float)
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
             << ", pooling elements = " << pooling_elements() << ", step = " << step()
             << ", input offset = " << input_offset();
           EXPECT_NEAR(
-              fp16_ieee_to_fp32_value(output[x * output_stride() + c]),
+              output[x * output_stride() + c],
               output_ref[x * channels() + c],
               std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) * 3.0e-3f))
             << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()

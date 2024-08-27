@@ -65,33 +65,33 @@ class VCMulMicrokernelTester {
     std::uniform_real_distribution<float> f32rdist(1.0f, 10.0f);
     std::uniform_real_distribution<float> f32idist(0.01f, 0.1f);
 
-    std::vector<uint16_t> a(2 * batch_size() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> b(2 * batch_size() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> y(2 * batch_size() + (inplace_a() || inplace_b() ? XNN_EXTRA_BYTES / sizeof(uint16_t) : 0));
+    std::vector<xnn_float16_t> a(2 * batch_size() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> b(2 * batch_size() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> y(2 * batch_size() + (inplace_a() || inplace_b() ? XNN_EXTRA_BYTES / sizeof(xnn_float16_t) : 0));
     std::vector<float> y_ref(2 * batch_size());
-    std::fill(a.begin(), a.end(), UINT16_C(0x7E00) /* NaN */);
-    std::fill(b.begin(), b.end(), UINT16_C(0x7E00) /* NaN */);
+    std::fill(a.begin(), a.end(), std::nanf(""));
+    std::fill(b.begin(), b.end(), std::nanf(""));
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate_n(a.begin(), batch_size(), [&]() { return fp16_ieee_from_fp32_value(f32rdist(rng)); });
-      std::generate_n(a.begin() + batch_size(), batch_size(), [&]() { return fp16_ieee_from_fp32_value(f32idist(rng)); });
-      std::generate_n(b.begin(), batch_size(), [&]() { return fp16_ieee_from_fp32_value(f32rdist(rng)); });
-      std::generate_n(b.begin() + batch_size(), batch_size(), [&]() { return fp16_ieee_from_fp32_value(f32idist(rng)); });
+      std::generate_n(a.begin(), batch_size(), [&]() { return f32rdist(rng); });
+      std::generate_n(a.begin() + batch_size(), batch_size(), [&]() { return f32idist(rng); });
+      std::generate_n(b.begin(), batch_size(), [&]() { return f32rdist(rng); });
+      std::generate_n(b.begin() + batch_size(), batch_size(), [&]() { return f32idist(rng); });
       if (inplace_a()) {
         std::copy(a.cbegin(), a.cend(), y.begin());
       } else if (inplace_b()) {
         std::copy(b.cbegin(), b.cend(), y.begin());
       } else {
-        std::fill(y.begin(), y.end(), UINT16_C(0x7E00) /* NaN */);
+        std::fill(y.begin(), y.end(), std::nanf(""));
       }
-      const uint16_t* a_data = inplace_a() ? y.data() : a.data();
-      const uint16_t* b_data = inplace_b() ? y.data() : b.data();
+      const xnn_float16_t* a_data = inplace_a() ? y.data() : a.data();
+      const xnn_float16_t* b_data = inplace_b() ? y.data() : b.data();
 
       // Compute reference results.
       for (size_t i = 0; i < batch_size(); i++) {
-        float a0 = fp16_ieee_to_fp32_value(a_data[i]);
-        float b0 = fp16_ieee_to_fp32_value(b_data[i]);
-        float a1 = fp16_ieee_to_fp32_value(a_data[i + batch_size()]);
-        float b1 = fp16_ieee_to_fp32_value(b_data[i + batch_size()]);
+        float a0 = a_data[i];
+        float b0 = b_data[i];
+        float a1 = a_data[i + batch_size()];
+        float b1 = b_data[i + batch_size()];
         y_ref[i] = a0 * b0 - a1 * b1;
         y_ref[i + batch_size()] = a0 * b1 + a1 * b0;
       }
@@ -103,12 +103,12 @@ class VCMulMicrokernelTester {
       }
 
       // Call optimized micro-kernel.
-      vcmul(batch_size() * sizeof(uint16_t), a_data, b_data, y.data(), init_params != nullptr ? &params : nullptr);
+      vcmul(batch_size() * sizeof(xnn_float16_t), a_data, b_data, y.data(), init_params != nullptr ? &params : nullptr);
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
         const float tolerance = std::abs(y_ref[i]) * 1.0e-2f;
-        EXPECT_NEAR(fp16_ieee_to_fp32_value(y[i]), y_ref[i], tolerance)
+        EXPECT_NEAR(y[i], y_ref[i], tolerance)
           << "at " << i << " / " << batch_size();
       }
     }

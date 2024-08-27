@@ -260,7 +260,7 @@ static void x16_packw__reference(
   size_t extra_bytes,
   const void* params)
 {
-  xnn_pack_f16_gemm_goi_w(batch, dim_n, dim_k, nr, kr, sr,
+  xnn_pack_x16_gemm_goi_w(batch, dim_n, dim_k, nr, kr, sr,
      weights, bias, scale, packed_weights, extra_bytes, params);
 }
 

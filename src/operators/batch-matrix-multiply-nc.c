@@ -137,14 +137,15 @@ enum xnn_status xnn_create_batch_matrix_multiply_nc_f16(
 
   union xnn_f16_minmax_params params;
   if XNN_LIKELY(gemm_config->init.f16 != NULL) {
-    gemm_config->init.f16(&params, UINT16_C(0xFC00), UINT16_C(0x7C00));
+    gemm_config->init.f16(&params, xnn_fp16_ieee_from_fp32_value(-INFINITY), 
+                          xnn_fp16_ieee_from_fp32_value(INFINITY));
   }
 
   return create_batch_matrix_multiply_nc(
     flags,
     &params, sizeof(params),
     gemm_config, gemm_ukernels,
-    (xnn_packw_gemm_gio_ukernel_fn) xnn_pack_f16_gemm_gio_w,
+    (xnn_packw_gemm_gio_ukernel_fn) xnn_pack_x16_gemm_gio_w,
     xnn_operator_type_batch_matrix_multiply_nc_f16,
     batch_matrix_multiply_op_out);
 }

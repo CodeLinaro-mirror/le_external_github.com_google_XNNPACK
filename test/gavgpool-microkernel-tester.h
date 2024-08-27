@@ -410,21 +410,21 @@ class GAvgPoolMicrokernelTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<uint16_t> input((rows() - 1) * input_stride() + channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> output(channels());
+    std::vector<xnn_float16_t> input((rows() - 1) * input_stride() + channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> output(channels());
     std::vector<float> output_ref(channels());
 
     std::fill(zero.begin(), zero.end(), 0);
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       // Compute reference results, without clamping.
       for (size_t c = 0; c < channels(); c++) {
         float acc = 0.0f;
         for (size_t n = 0; n < rows(); n++) {
-          acc += fp16_ieee_to_fp32_value(input[n * input_stride() + c]);
+          acc += input[n * input_stride() + c];
         }
         output_ref[c] = acc / float(rows());
       }
@@ -433,8 +433,8 @@ class GAvgPoolMicrokernelTester {
       const float accumulated_min = *std::min_element(output_ref.cbegin(), output_ref.cend());
       const float accumulated_max = *std::max_element(output_ref.cbegin(), output_ref.cend());
       const float accumulated_range = accumulated_max - accumulated_min;
-      const float output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(accumulated_min + float(qmin()) / 255.0f * accumulated_range));
-      const float output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range));
+      const float output_min = xnn_float16_t(accumulated_min + float(qmin()) / 255.0f * accumulated_range);
+      const float output_max = xnn_float16_t(accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range);
 
       // Clamp reference results.
       for (float& output_values : output_ref) {
@@ -444,24 +444,24 @@ class GAvgPoolMicrokernelTester {
       // Prepare parameters.
       xnn_f16_scaleminmax_params params;
       init_params(&params,
-        fp16_ieee_from_fp32_value(1.0f / float(rows())),
-        fp16_ieee_from_fp32_value(output_min),
-        fp16_ieee_from_fp32_value(output_max));
+        1.0f / float(rows()),
+        output_min,
+        output_max);
 
       // Call optimized micro-kernel.
       gavgpool_minmax(rows(), channels(),
-        input.data(), input_stride() * sizeof(uint16_t),
+        input.data(), input_stride() * sizeof(xnn_float16_t),
         zero.data(),
         output.data(),
         &params);
 
       // Verify results.
       for (size_t c = 0; c < channels(); c++) {
-        ASSERT_LE(fp16_ieee_to_fp32_value(output[c]), output_max)
+        ASSERT_LE(output[c], output_max)
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
-        ASSERT_GE(fp16_ieee_to_fp32_value(output[c]), output_min)
+        ASSERT_GE(output[c], output_min)
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
-        EXPECT_NEAR(fp16_ieee_to_fp32_value(output[c]), output_ref[c], std::max(1.0e-4f, std::abs(output_ref[c]) * 1.0e-2f))
+        EXPECT_NEAR(output[c], output_ref[c], std::max(1.0e-4f, std::abs(output_ref[c]) * 1.0e-2f))
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
       }
     }
@@ -471,20 +471,20 @@ class GAvgPoolMicrokernelTester {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
-    std::vector<uint16_t> input((rows() - 1) * input_stride() + channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t, AlignedAllocator<uint16_t, 64>> buffer(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
-    std::vector<uint16_t> output(channels());
+    std::vector<xnn_float16_t> input((rows() - 1) * input_stride() + channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t, AlignedAllocator<xnn_float16_t, 64>> buffer(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16_t));
+    std::vector<xnn_float16_t> output(channels());
     std::vector<float> output_ref(channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+      std::fill(output.begin(), output.end(), std::nanf(""));
 
       // Compute reference results, without clamping.
       for (size_t c = 0; c < channels(); c++) {
         float acc = 0.0f;
         for (size_t n = 0; n < rows(); n++) {
-          acc += fp16_ieee_to_fp32_value(input[n * input_stride() + c]);
+          acc += input[n * input_stride() + c];
         }
         output_ref[c] = acc / float(rows());
       }
@@ -493,15 +493,15 @@ class GAvgPoolMicrokernelTester {
       const float accumulated_min = *std::min_element(output_ref.cbegin(), output_ref.cend());
       const float accumulated_max = *std::max_element(output_ref.cbegin(), output_ref.cend());
       const float accumulated_range = accumulated_max - accumulated_min;
-      const float output_min = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(accumulated_min + float(qmin()) / 255.0f * accumulated_range));
-      const float output_max = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range));
+      const float output_min = xnn_float16_t(accumulated_min + float(qmin()) / 255.0f * accumulated_range);
+      const float output_max = xnn_float16_t(accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range);
 
       // Prepare parameters.
       xnn_f16_scaleminmax_params params;
       init_params(&params,
-        fp16_ieee_from_fp32_value(1.0f / float(rows())),
-        fp16_ieee_from_fp32_value(output_min),
-        fp16_ieee_from_fp32_value(output_max));
+        1.0f / float(rows()),
+        output_min,
+        output_max);
 
       // Clamp reference results.
       for (float& output_values : output_ref) {
@@ -510,7 +510,7 @@ class GAvgPoolMicrokernelTester {
 
       // Call optimized micro-kernel.
       gavgpool_minmax(rows(), channels(),
-        input.data(), input_stride() * sizeof(uint16_t),
+        input.data(), input_stride() * sizeof(xnn_float16_t),
         zero.data(),
         buffer.data(),
         output.data(),
@@ -518,11 +518,11 @@ class GAvgPoolMicrokernelTester {
 
       // Verify results.
       for (size_t c = 0; c < channels(); c++) {
-        ASSERT_LE(fp16_ieee_to_fp32_value(output[c]), output_max)
+        ASSERT_LE(output[c], output_max)
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
-        ASSERT_GE(fp16_ieee_to_fp32_value(output[c]), output_min)
+        ASSERT_GE(output[c], output_min)
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
-        EXPECT_NEAR(fp16_ieee_to_fp32_value(output[c]), output_ref[c], std::abs(output_ref[c]) * 1.0e-0f)
+        EXPECT_NEAR(output[c], output_ref[c], std::abs(output_ref[c]) * 1.0e-0f)
           << "at position " << c << ", rows = " << rows() << ", channels = " << channels();
       }
     }

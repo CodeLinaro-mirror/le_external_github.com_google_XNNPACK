@@ -191,8 +191,8 @@ TEST(PACK_QD8_F32_QB4W_GEMM_GOI_W, bl_eq_kc) {
   size_t extra_bytes_n = sizeof(float);
   std::vector<uint8_t> packed_weights(g * round_up(nc, nr) * (sizeof(float) + round_up_po2(kc, kr * sr) / 2)
     + k_num_blocks * round_up(nc, nr) * extra_bytes_bl + round_up(nc, nr) * extra_bytes_n);
-  std::vector<uint16_t> scale(nc * k_num_blocks, 0);
-  std::fill(scale.begin(), scale.end(), math_cvt_bf16_fp32(853.6010));
+  std::vector<xnn_bfloat16_t> scale(nc * k_num_blocks, 0);
+  std::fill(scale.begin(), scale.end(), 853.6010);
   auto a = xnn_qs8_qc4w_packing_params{ -1, 0x8 };
 
   xnn_pack_qs8_qb4w_gemm_goi_w(g, nc, kc, nr, kr, sr, bl,
@@ -267,8 +267,8 @@ TEST(PACK_QD8_F32_QB4W_GEMM_GOI_W, nc_gt_1) {
   size_t extra_bytes_bl = sizeof(uint16_t);
   std::vector<uint8_t> packed_weights(g * round_up(nc, nr) * (sizeof(float) + round_up_po2(kc, kr * sr) / 2)
     + k_num_blocks * round_up(nc, nr) * extra_bytes_bl + round_up(nc, nr) * extra_bytes_n);
-  std::vector<uint16_t> scale(nc * k_num_blocks, 0);
-  std::fill(scale.begin(), scale.end(), math_cvt_bf16_fp32(853.6010));
+  std::vector<xnn_bfloat16_t> scale(nc * k_num_blocks, 0);
+  std::fill(scale.begin(), scale.end(), 853.6010);
 
   auto a = xnn_qs8_qc4w_packing_params{ -1, 0x8 };
   xnn_pack_qs8_qb4w_gemm_goi_w(g, nc, kc, nr, kr, sr, bl,
@@ -343,8 +343,8 @@ TEST(PACK_QD8_F32_QB4W_GEMM_GOI_W, bl_lt_kc) {
   size_t extra_bytes_bl = sizeof(uint16_t);
   std::vector<uint8_t> packed_weights(g * round_up(nc, nr) * (sizeof(float) + round_up_po2(kc, kr * sr) / 2)
     + k_num_blocks * round_up(nc, nr) * extra_bytes_bl + round_up(nc, nr) * extra_bytes_n);
-  std::vector<uint16_t> scale(nc * k_num_blocks, 0);
-  std::fill(scale.begin(), scale.end(), math_cvt_bf16_fp32(853.6010));
+  std::vector<xnn_bfloat16_t> scale(nc * k_num_blocks, 0);
+  std::fill(scale.begin(), scale.end(), 853.6010);
 
 
   auto a = xnn_qs8_qc4w_packing_params{ -1, 0x8 };
@@ -430,8 +430,8 @@ TEST(PACK_QD8_F32_QB4W_GEMM_GIO_W, bl_eq_kc) {
   size_t extra_bytes_bl = sizeof(uint16_t);
   std::vector<uint8_t> packed_weights(g * round_up(nc, nr) * (sizeof(float) + round_up_po2(kc, kr * sr) / 2)
     + k_num_blocks * round_up(nc, nr) * extra_bytes_bl + round_up(nc, nr) * extra_bytes_n);
-  std::vector<uint16_t> scale(nc * k_num_blocks, 0);
-  std::fill(scale.begin(), scale.end(), math_cvt_bf16_fp32(853.6010));
+  std::vector<xnn_bfloat16_t> scale(nc * k_num_blocks, 0);
+  std::fill(scale.begin(), scale.end(), 853.6010);
 
 
   auto a = xnn_qs8_qc4w_packing_params{ -1, 0x8 };
@@ -8491,7 +8491,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size) {
   std::iota(b.begin(), b.end(), 0.0f);  // b = [0, 1]
   std::vector<float> k(c * h * w);  // k = [2, 3, 4, 5, 6, 7]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
       primary_tile,
@@ -8511,7 +8511,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f, 1.0f,
     // then weights, channels first
@@ -8519,9 +8519,6 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size) {
     3.0f, 6.0f,
     4.0f, 7.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8541,7 +8538,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size_channels_gt_cr) {
                                       //   14, 15, 16,
                                       //   17, 18, 19]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
       primary_tile,
@@ -8561,7 +8558,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size_channels_gt_cr) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // cr blocks
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
@@ -8576,9 +8573,6 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_eq_kernel_size_channels_gt_cr) {
     // then weights, channels first
     17.0f, 0.0f, 18.0f, 0.0f, 19.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8597,7 +8591,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size) {
                                       //   6, 7,
                                       //   8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
       primary_tile,
@@ -8617,7 +8611,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
     // then weights, channels first
@@ -8627,9 +8621,6 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size) {
     // followed by 10 zeros to make up the difference with primary_tile
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8654,7 +8645,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size_channels_gt_cr) {
                                       //   21, 22,
                                       //   23, 24]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
       primary_tile,
@@ -8674,7 +8665,7 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size_channels_gt_cr) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
     // then weights, channels first
@@ -8696,9 +8687,6 @@ TEST(PACK_F32_TO_F16_DWCONV_GHW_W, primary_tile_gt_kernel_size_channels_gt_cr) {
     21.0f, 0.0f, 23.0f, 0.0f, 22.0f, 0.0f, 24.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8713,7 +8701,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
   std::iota(b.begin(), b.end(), 0.0f);  // b = [0, 1]
   std::vector<float> k(c * h * w);  // k = [2, 3, 4, 5, 6, 7]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
       primary_tile,
@@ -8733,7 +8721,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f, 1.0f,
     // then weights, channels first
@@ -8741,9 +8729,6 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
     4.0f, 5.0f,
     6.0f, 7.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8761,7 +8746,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size_channels_gt_cr) {
                                       //   10, 11, 12, 13, 14,
                                       //   15, 16, 17, 18, 19]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
       primary_tile,
@@ -8781,7 +8766,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size_channels_gt_cr) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // cr blocks
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
@@ -8796,9 +8781,6 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_eq_kernel_size_channels_gt_cr) {
     // then weights, channels first
     9.0f, 0.0f, 14.0f, 0.0f, 19.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8817,7 +8799,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size) {
                                       //   6, 7,
                                       //   8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
       primary_tile,
@@ -8837,7 +8819,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
     // then weights, channels first
@@ -8847,9 +8829,6 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size) {
     // followed by 10 zeros to make up the difference with primary_tile
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -8868,7 +8847,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size_channels_gt_cr) {
                                       //   15, 16, 17, 18, 19,
                                       //   20, 21, 22, 23, 24]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
+  std::vector<xnn_float16_t> packed_weights(((primary_tile + 1) * round_up_po2(c, cr)));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
       primary_tile,
@@ -8888,7 +8867,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size_channels_gt_cr) {
       0,
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first (cr == 2 of them)
     0.0f, 1.0f,
     // then weights, channels first
@@ -8910,18 +8889,7 @@ TEST(PACK_F32_TO_F16_DWCONV_HWG_W, primary_tile_gt_kernel_size_channels_gt_cr) {
     9.0f, 0.0f, 19.0f, 0.0f, 14.0f, 0.0f, 24.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
-}
-
-namespace {
-// Helper matcher to allow us to specify expected weights as float, while
-// comparing it to packed fp16 values.
-MATCHER(Fp16MatchFp32, "") {
-  return std::get<0>(arg) == fp16_ieee_from_fp32_value(std::get<1>(arg));
-}
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once) {
@@ -8940,7 +8908,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once) {
                                     //      6, 7, // second 2x2 kernel
                                     //      8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -8961,7 +8929,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f,  // bias
     2.0f, 6.0f,  // 2 weights, channels first, then columns
@@ -8972,7 +8940,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once) {
     0.0f, 0.0f,  // padding to last_pass_tile
   };
 
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_channels_gt_cr) {
@@ -8993,7 +8961,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
                                     //      21, 22, 23, 24, // fifth 2x2 kernel
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9014,7 +8982,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, // bias
     5.0f, 9.0f, // 2 weights, 2 channels first, then columns
@@ -9037,7 +9005,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
     0.0f, 0.0f,  // padding
 
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile) {
@@ -9056,7 +9024,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile) {
                                     //      6, 7, // second 2x2 kernel
                                     //      8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9077,7 +9045,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass only has 1 element.
     0.0f, 1.0f, // bias
     2.0f, 6.0f, // weights, 2 channels, 1 element.
@@ -9087,7 +9055,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile) {
     // Last pass.
     5.0f, 9.0f,
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile_channels_gt_cr) {
@@ -9113,7 +9081,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile_channels_gt_cr
                                     //      23, 24,
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9134,7 +9102,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile_channels_gt_cr
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass only has 1 element.
     0.0f, 1.0f, // bias
     5.0f, 9.0f, // weights, 2 channels, 1 element.
@@ -9158,7 +9126,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_tile_channels_gt_cr
     24.0f, 0.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile) {
@@ -9177,7 +9145,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile) {
                                     //      8, 9, 10, // second 2x3 kernel
                                     //      11, 12, 13]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9198,7 +9166,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass has 2 elements.
     0.0f, 1.0f, // bias
     2.0f, 8.0f, // 1 weight, 2 channels first, then columns
@@ -9212,7 +9180,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile) {
     7.0f, 13.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile_channels_gt_cr) {
@@ -9238,7 +9206,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile_channels_
                                     //      32, 33, 34,
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9260,7 +9228,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile_channels_
       nullptr);
 
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass has 1 element.
     0.0f, 1.0f, // bias
     5.0f, 11.0f, // 1 weight, 2 channels, 2 elements.
@@ -9293,7 +9261,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, multiple_middle_pass_tile_channels_
     34.0f, 0.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_channel_subtile) {
@@ -9319,7 +9287,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
                                     //      21, 22, // fifth 2x2 kernel
                                     //      23, 24 ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9340,7 +9308,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f,  // bias, 4 channels
     5.0f, 9.0f, 13.0f, 17.0f,  // 2 weights, 4 channels first, then columns
@@ -9356,7 +9324,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
     24.0f, 0.0f,
     0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile) {
@@ -9382,7 +9350,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile) {
                                     //      21, 22, // fifth 2x2 kernel
                                     //      23, 24 ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9403,7 +9371,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f,  // bias, 4 channels
     5.0f, 9.0f, 13.0f, 17.0f,  // 1 weight, 4 channels first, then columns
@@ -9420,7 +9388,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile) {
     24.0f, 0.0f, // 1 weight, 1 last channel, 1 padding up to channel_subtile
     0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_channel_subtile_rounded) {
@@ -9451,7 +9419,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
                                     //      31, 32, // seventh 2x2 kernel
                                     //      33, 34]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9472,7 +9440,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f,  // bias, 4 channels
     7.0f, 11.0f, 15.0f, 19.0f,  // 2 weights, 4 channels first, then columns
@@ -9492,7 +9460,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
     34.0f, 0.0f, // 1 remainder channel, 1 padding up to channel_subtile
     0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_channel_subtile_rounded_to_channel_round) {
@@ -9517,7 +9485,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
                                     //      22, 23, 24, 25,
                                     //      26, 27, 28, 29,]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(
       h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile, channel_round));
 
@@ -9539,7 +9507,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     6.0f, 10.0f, 14.0f, 18.0f, // 2 weights, 4 channels first, then columns
@@ -9555,7 +9523,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, first_pass_once_last_pass_once_chan
     25.0f, 29.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile_rounded) {
@@ -9586,7 +9554,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile_rou
                                     //      31, 32, // seventh 2x2 kernel
                                     //      33, 34]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_ghw_w(
@@ -9607,7 +9575,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile_rou
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f,  // bias, 4 channels
     7.0f, 11.0f, 15.0f, 19.0f,  // 1 weight, 4 channels first, then columns
@@ -9626,7 +9594,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_GHW_W, one_middle_pass_channel_subtile_rou
     34.0f, 0.0f, // 1 weight, 1 remainder channel, 1 padding up to channel_subtile
     0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once) {
@@ -9645,7 +9613,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once) {
                                     //      6, 7,
                                     //      8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9666,7 +9634,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, // bias
     2.0f, 3.0f, // First pass, 2 weights, channels first, then columns
@@ -9676,7 +9644,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once) {
     8.0f, 9.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_channels_gt_cr) {
@@ -9696,7 +9664,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
                                     //      20, 21, 22, 23, 24,
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9717,7 +9685,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, // bias
     5.0f, 6.0f, // 2 weights, 2 channels first, then columns
@@ -9740,7 +9708,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
     24.0f, 0.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile) {
@@ -9759,7 +9727,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile) {
                                     //      6, 7,
                                     //      8, 9]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9780,7 +9748,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass only has 1 element.
     0.0f, 1.0f, // bias
     2.0f, 3.0f, // weights, 2 channels, 1 element.
@@ -9790,7 +9758,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile) {
     // Last pass.
     8.0f, 9.0f,
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile_channels_gt_cr) {
@@ -9810,7 +9778,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile_channels_gt_cr
                                     //      20, 21, 22, 23, 24,
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9831,7 +9799,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile_channels_gt_cr
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass only has 1 element.
     0.0f, 1.0f, // bias
     5.0f, 6.0f, // weights, 2 channels, 1 element.
@@ -9855,7 +9823,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_tile_channels_gt_cr
     24.0f, 0.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile) {
@@ -9876,7 +9844,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile) {
                                     //      10, 11,
                                     //      12, 13]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9897,7 +9865,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass has 2 elements.
     0.0f, 1.0f, // bias
     2.0f, 3.0f, // 1 weight, 2 channels first, then columns
@@ -9910,7 +9878,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile) {
     12.0f, 13.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile_channels_gt_cr) {
@@ -9932,7 +9900,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile_channels_
                                     //      30, 31, 32, 33, 34,
                                     //      ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -9954,7 +9922,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile_channels_
       nullptr);
 
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass has 1 element.
     0.0f, 1.0f, // bias
     5.0f, 6.0f, // weights, 2 channels, 2 elements.
@@ -9987,7 +9955,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, multiple_middle_pass_tile_channels_
     34.0f, 0.0f,
     0.0f, 0.0f,  // padding
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_channel_subtile) {
@@ -10007,7 +9975,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
                                     //      15, 16, 17, 18, 19, // third channel
                                     //      20, 21, 22, 23, 24] // fourth channel
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -10028,7 +9996,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     5.0f, 6.0f, 7.0f, 8.0f, // first pass, 2 weights, 4 channels first, then columns
@@ -10044,7 +10012,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
     24.0f, 0.0f, // 2 weights, 1 last channel, 1 padding up to channel_subtile
     0.0f, 0.0f,  // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile) {
@@ -10064,7 +10032,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile) {
                                     //      15, 16, 17, 18, 19,
                                     //      20, 21, 22, 23, 24]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -10085,7 +10053,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile) {
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     5.0f, 6.0f, 7.0f, 8.0f, // first pass, 1 weight, 4 channels first, then columns
@@ -10102,7 +10070,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile) {
     24.0f, 0.0f, // 1 weight, 1 last channel, 1 padding up to channel_subtile
     0.0f, 0.0f,  // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_channel_subtile_rounded) {
@@ -10123,7 +10091,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
                                     //      21, 22, 23, 24, 25, 26, 27,
                                     //      28, 29, 30, 31, 32, 33, 34]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -10144,7 +10112,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     7.0f, 8.0f, 9.0f, 10.0f, // 2 weights, 4 channels first, then columns
@@ -10163,7 +10131,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
     34.0f, 0.0f,
     0.0f, 0.0f,  // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile_rounded) {
@@ -10184,7 +10152,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile_rou
                                     //      21, 22, 23, 24, 25, 26, 27,
                                     //      28, 29, 30, 31, 32, 33, 34]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile));
 
   xnn_pack_f32_to_f16_dwconv_hwg_w(
@@ -10205,7 +10173,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile_rou
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     7.0f, 8.0f, 9.0f, 10.0f, // 1 weight, 4 channels first, then columns
@@ -10224,7 +10192,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, one_middle_pass_channel_subtile_rou
     34.0f, 0.0f, // last pass, 1 remainder channel, 1 padding up to channel_subtile
     0.0f, 0.0f,  // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_channel_subtile_rounded_to_channel_round) {
@@ -10247,7 +10215,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
                                     //      18, 19, 20, 21, 22, 23,
                                     //      24, 25, 26, 27, 28, 29,]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(
+  std::vector<xnn_float16_t> packed_weights(
     multipass_weights_count(
       h * w, first_pass_tile, middle_pass_tile, last_pass_tile, c, cr, channel_subtile, channel_round));
 
@@ -10269,7 +10237,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
       0,
       nullptr);
 
-  const std::vector<float> expected = {
+  const std::vector<xnn_float16_t> expected = {
     // First pass.
     0.0f, 1.0f, 2.0f, 3.0f, // bias, 4 channels
     6.0f, 7.0f, 8.0f, 9.0f, // 2 weights, 4 channels first, then columns
@@ -10285,7 +10253,7 @@ TEST(PACK_F32_TO_F16_MULTIPASS_DWCONV_HWG_W, first_pass_once_last_pass_once_chan
     28.0f, 29.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 0.0f, // padding to last_pass_tile
   };
-  EXPECT_THAT(packed_weights, testing::Pointwise(Fp16MatchFp32(), expected));
+  EXPECT_THAT(packed_weights, testing::Pointwise(testing::Eq(), expected));
 }
 
 TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
@@ -10297,7 +10265,7 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
   std::iota(b.begin(), b.end(), 0.0f);  // b = [0]
   std::vector<float> k(h * w);  // k = [1, 2, 3]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(primary_tile + 1);
+  std::vector<xnn_float16_t> packed_weights(primary_tile + 1);
 
   xnn_pack_f32_to_f16_chw_dwconv_hwg_w(
       primary_tile,  // kernel size
@@ -10307,7 +10275,7 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
       packed_weights.data(),
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f,
     // then weights
@@ -10315,9 +10283,6 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, primary_tile_eq_kernel_size) {
     2.0f,
     3.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -10332,7 +10297,7 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, groups_gt_1) {
   std::iota(b.begin(), b.end(), 0.0f);  // b = [0, 1, 2]
   std::vector<float> k(g * h * w);  // k = [3, 4, 5, 6, 7, 8, 9, 10, 11 ]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(g + g * h * w);
+  std::vector<xnn_float16_t> packed_weights(g + g * h * w);
 
   xnn_pack_f32_to_f16_chw_dwconv_hwg_w(
       primary_tile,  // kernel size
@@ -10342,7 +10307,7 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, groups_gt_1) {
       packed_weights.data(),
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f,
     // then weights
@@ -10364,9 +10329,6 @@ TEST(PACK_F32_TO_F16_CHW_DWCONV_HWG_W, groups_gt_1) {
     8.0f,
     11.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -10570,7 +10532,7 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, primary_tile_eq_kernel_size) {
   std::iota(b.begin(), b.end(), 0.0f);  // b = [0]
   std::vector<float> k(h * w);  // k = [3, 4, 5]
   std::iota(k.begin(), k.end(), static_cast<float>(b.size()));
-  std::vector<uint16_t> packed_weights(primary_tile * 2);
+  std::vector<xnn_float16_t> packed_weights(primary_tile * 2);
 
   xnn_pack_f32_to_f16_dconv_oki_w(
       h, // nc
@@ -10583,7 +10545,7 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, primary_tile_eq_kernel_size) {
       packed_weights.data(),
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f,
     // then weight
@@ -10597,9 +10559,6 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, primary_tile_eq_kernel_size) {
     // then weight
     5.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 
@@ -10610,7 +10569,7 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, null_bias) {
 
   std::vector<float> k(h * w);  // k = [3, 4, 5]
   std::iota(k.begin(), k.end(), 3.0f);
-  std::vector<uint16_t> packed_weights(primary_tile * 2);
+  std::vector<xnn_float16_t> packed_weights(primary_tile * 2);
 
   xnn_pack_f32_to_f16_dconv_oki_w(
       h, // nc
@@ -10623,7 +10582,7 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, null_bias) {
       packed_weights.data(),
       nullptr);
 
-  const std::vector<float> expected_float = {
+  const std::vector<xnn_float16_t> expected = {
     // bias first
     0.0f,
     // then weight
@@ -10637,9 +10596,6 @@ TEST(PACK_F32_TO_F16_DWCONV_OKI_W, null_bias) {
     // then weight
     5.0f,
   };
-  std::vector<uint16_t> expected(expected_float.size());
-  std::transform(expected_float.begin(), expected_float.end(), expected.begin(),
-                 [](float f) { return fp16_ieee_from_fp32_value(f); });
   EXPECT_EQ(expected, packed_weights);
 }
 

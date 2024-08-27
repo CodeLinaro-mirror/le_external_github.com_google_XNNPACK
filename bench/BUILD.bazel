@@ -31,6 +31,8 @@ MICROKERNEL_BENCHMARK_DEPS = [
     "//:all_microkernels",
     "//:common",
     "//:hardware_config",
+    "//:isa_checks",
+    "//:math",
     "//:microkernels_h",
     "//:microparams_init",
     "//:microparams",
@@ -45,6 +47,7 @@ OPERATOR_BENCHMARK_DEPS = [
     "//:aligned_allocator",
     "//:cache",
     "//:common",
+    "//:math",
     "@FP16",
 ]
 
@@ -108,7 +111,6 @@ xnnpack_cxx_library(
     ],
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         "//:config_hdrs",
-        "//:math",
         "@com_google_benchmark//:benchmark",
     ],
 )
@@ -121,8 +123,6 @@ xnnpack_cxx_library(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":gemm_benchmark",
         "//:allocator",
-        "//:isa_checks",
-        "//:math",
     ],
 ) for kernel in [
     "qd8_f16_qb4w_gemm",
@@ -149,8 +149,6 @@ xnnpack_cxx_library(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":gemm_benchmark",
         "//:allocator",
-        "//:isa_checks",
-        "//:math",
     ] + xnnpack_optional_ruy_deps() + xnnpack_optional_gemmlowp_deps(),
 ) for kernel in [
     "qs8_gemm",
@@ -170,7 +168,6 @@ xnnpack_benchmark(
     copts = xnnpack_optional_ruy_copts(),
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         "//:allocator",
-        "//:math",
     ] + xnnpack_optional_ruy_deps(),
 )
 
@@ -182,7 +179,6 @@ xnnpack_benchmark(
     defines = xnnpack_kleidiai_defines(),
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":gemm_benchmark",
-        "//:isa_checks",
     ] + xnnpack_if_kleidiai_enabled([
         "@KleidiAI//kai/ukernels/matmul",
     ]),
@@ -315,7 +311,6 @@ xnnpack_benchmark(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":conv",
         "//:indirection",
-        "//:math",
     ],
 )
 
@@ -327,7 +322,6 @@ xnnpack_benchmark(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":conv",
         "//:indirection",
-        "//:math",
     ],
 )
 
@@ -392,7 +386,6 @@ xnnpack_benchmark(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":conv",
         "//:indirection",
-        "//:math",
     ],
 )
 
@@ -477,7 +470,6 @@ xnnpack_benchmark(
     ],
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":spmm",
-        "//:isa_checks",
     ],
 )
 
@@ -506,7 +498,6 @@ xnnpack_benchmark(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":conv",
         "//:im2col",
-        "//:math",
     ],
 )
 
@@ -531,7 +522,6 @@ xnnpack_benchmark(
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         ":packq_benchmark",
         "//:allocator",
-        "//:math",
     ],
 )
 
@@ -544,7 +534,6 @@ xnnpack_benchmark(
     ],
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         "//:allocator",
-        "//:math",
     ],
 )
 
@@ -557,7 +546,6 @@ xnnpack_benchmark(
     ],
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         "//:allocator",
-        "//:math",
     ],
 )
 
@@ -570,7 +558,6 @@ xnnpack_benchmark(
     ],
     deps = MICROKERNEL_BENCHMARK_DEPS + [
         "//:allocator",
-        "//:math",
     ],
 )
 

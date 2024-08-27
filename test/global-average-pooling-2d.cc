@@ -89,7 +89,7 @@ template <typename T> class GlobalAveragePooling2DTest : public ::testing::Test 
 
 using GlobalAveragePooling2DTestQS8 = GlobalAveragePooling2DTest<int8_t>;
 using GlobalAveragePooling2DTestQU8 = GlobalAveragePooling2DTest<uint8_t>;
-using GlobalAveragePooling2DTestF16 = GlobalAveragePooling2DTest<uint16_t>;
+using GlobalAveragePooling2DTestF16 = GlobalAveragePooling2DTest<xnn_float16_t>;
 using GlobalAveragePooling2DTestF32 = GlobalAveragePooling2DTest<float>;
 
 TEST_F(GlobalAveragePooling2DTestQS8, define)
@@ -406,9 +406,9 @@ TEST_F(GlobalAveragePooling2DTestF16, matches_operator_api)
 
   xnn_operator_t op = nullptr;
 
-  std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-  std::fill(operator_output.begin(), operator_output.end(), UINT16_C(0x7E00) /* NaN */);
-  std::fill(subgraph_output.begin(), subgraph_output.end(), UINT16_C(0x7E00) /* NaN */);
+  std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
+  std::fill(operator_output.begin(), operator_output.end(), std::nanf(""));
+  std::fill(subgraph_output.begin(), subgraph_output.end(), std::nanf(""));
 
   // Call operator API.
   const xnn_status status = xnn_create_global_average_pooling_nwc_f16(
