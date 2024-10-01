@@ -596,3 +596,278 @@ enum xnn_status xnn_setup_mean_nd_qu8(
     workspace, input, output,
     xnn_operator_type_mean_nd_qu8);
 }
+
+enum xnn_status xnn_create_sum_nd_f16(
+  uint32_t flags,
+  xnn_operator_t* sum_op_out)
+{
+  const struct xnn_reduce_config* rsum_config = xnn_init_f16_f32acc_rsum_config();
+  const struct xnn_reduce_config* rdsum_config = xnn_init_f16_f32acc_rdsum_config();
+  const struct xnn_unary_elementwise_config* f32_to_f16_cvt_config = xnn_init_f32_to_f16_cvt_config();
+  if (rdsum_config == NULL || rsum_config == NULL || f32_to_f16_cvt_config == NULL) {
+    xnn_log_error("failed to create %s operator: unsupported hardware configuration",
+                  xnn_operator_type_to_string(xnn_operator_type_sum_nd_f16));
+    return xnn_status_unsupported_hardware;
+  }
+  struct f16_f32acc_mean_params params;
+  rsum_config->init.f16_f32acc_scale(&params.f16_f32acc_scale, /*scale=*/1.0f);
+  return create_mean_nd(
+    flags,
+    /*log2_element_size=*/XNN_LOG2_SIZEOF_HALF,
+    xnn_operator_type_sum_nd_f16,
+    rdsum_config, rsum_config, f32_to_f16_cvt_config, /*s32_f32_cvt_config=*/NULL,
+    /*u32_f32_cvt_config=*/NULL, &params, sizeof(params), sum_op_out);
+}
+
+static void update_params_sum_f16(
+  xnn_operator_t sum_op,
+  size_t num_elements)
+{
+  const float scale = 1.0f;
+  sum_op->rsum_config->init.f16_f32acc_scale(&sum_op->params.mean_params.f16_f32acc_scale, scale);
+}
+
+enum xnn_status xnn_reshape_sum_nd_f16(
+    xnn_operator_t sum_op,
+    size_t num_reduction_axes,
+    const size_t* reduction_axes,
+    size_t num_input_dims,
+    const size_t* input_shape,
+    size_t* workspace_size,
+    size_t* workspace_alignment,
+    pthreadpool_t threadpool)
+{
+  return reshape_mean_nd(
+    sum_op,
+    num_reduction_axes, reduction_axes,
+    num_input_dims, input_shape,
+    workspace_size, workspace_alignment,
+    /*log2_data_element_size=*/XNN_LOG2_SIZEOF_HALF,
+    /*log2_accumulator_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    xnn_operator_type_sum_nd_f16,
+    /*scale_params=*/&sum_op->params.mean_params.f16_f32acc_scale,
+    /*scale_params_size=*/sizeof(sum_op->params.mean_params.f16_f32acc_scale),
+    update_params_sum_f16,
+    threadpool);
+}
+
+enum xnn_status xnn_setup_sum_nd_f16(
+    xnn_operator_t sum_op,
+    void* workspace,
+    const void* input,
+    void* output)
+{
+  return setup_mean_nd(
+    sum_op,
+    workspace, input, output,
+    xnn_operator_type_sum_nd_f16);
+}
+
+enum xnn_status xnn_create_sum_nd_f32(
+  uint32_t flags,
+  xnn_operator_t* sum_op_out)
+{
+  const struct xnn_reduce_config* rsum_config = xnn_init_f32_rsum_config();
+  const struct xnn_reduce_config* rdsum_config = xnn_init_f32_rdsum_config();
+  if (rdsum_config == NULL || rsum_config == NULL) {
+    xnn_log_error("failed to create %s operator: unsupported hardware configuration",
+                  xnn_operator_type_to_string(xnn_operator_type_sum_nd_f32));
+    return xnn_status_unsupported_hardware;
+  }
+
+  struct xnn_f32_scaleminmax_params params;
+  rsum_config->init.f32_scaleminmax(&params, /*scale=*/1.0f, /*min=*/-INFINITY, /*max=*/INFINITY);
+  return create_mean_nd(
+    flags,
+    /*log2_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    xnn_operator_type_sum_nd_f32,
+    rdsum_config, rsum_config, /*cvt_config=*/NULL, /*s32_f32_cvt_config=*/NULL,
+    /*u32_f32_cvt_config=*/NULL, &params, sizeof(params), sum_op_out);
+}
+
+static void update_params_sum_f32(
+  xnn_operator_t sum_op,
+  size_t num_elements)
+{
+  const float scale = 1.0f;
+  sum_op->rsum_config->init.f32_scaleminmax(&sum_op->params.f32_scaleminmax, scale, -INFINITY, INFINITY);
+  sum_op->rdsum_config->init.f32_scaleminmax(&sum_op->params.f32_scaleminmax, scale, -INFINITY, INFINITY);
+}
+
+enum xnn_status xnn_reshape_sum_nd_f32(
+    xnn_operator_t sum_op,
+    size_t num_reduction_axes,
+    const size_t* reduction_axes,
+    size_t num_input_dims,
+    const size_t* input_shape,
+    pthreadpool_t threadpool)
+{
+  return reshape_mean_nd(
+    sum_op,
+    num_reduction_axes, reduction_axes,
+    num_input_dims, input_shape,
+    /*workspace_size=*/NULL, /*workspace_alignment=*/NULL,
+    /*log2_data_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    /*log2_accumulator_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    xnn_operator_type_sum_nd_f32,
+    /*scale_params=*/&sum_op->params.f32_scaleminmax,
+    /*scale_params_size=*/sizeof(sum_op->params.f32_scaleminmax),
+    update_params_sum_f32,
+    threadpool);
+}
+
+enum xnn_status xnn_setup_sum_nd_f32(
+    xnn_operator_t sum_op,
+    const float* input,
+    float* output)
+{
+  return setup_mean_nd(
+    sum_op,
+    /*workspace=*/NULL, input, output,
+    xnn_operator_type_sum_nd_f32);
+}
+
+enum xnn_status xnn_create_sum_nd_qs8(
+  float scale,
+  int8_t input_zero_point,
+  int8_t output_zero_point,
+  uint32_t flags,
+  xnn_operator_t* sum_op_out)
+{
+  const struct xnn_reduce_config* rsum_config = xnn_init_qs8_rsum_config();
+  const struct xnn_reduce_config* rdsum_config = xnn_init_qs8_rdsum_config();
+  const struct xnn_unary_elementwise_config* f32_qs8_cvt_config = xnn_init_f32_to_qs8_cvt_config();
+  const struct xnn_unary_elementwise_config* s32_f32_cvt_config = xnn_init_s32_to_f32_cvt_config();
+  if (rdsum_config == NULL || rsum_config == NULL || f32_qs8_cvt_config == NULL || s32_f32_cvt_config == NULL) {
+    xnn_log_error("failed to create %s operator: unsupported hardware configuration",
+                  xnn_operator_type_to_string(xnn_operator_type_sum_nd_qs8));
+    return xnn_status_unsupported_hardware;
+  }
+
+  struct xnn_qs8_mean_minmax_params params;
+  rsum_config->init.qs8_mean(&params, scale, -1, input_zero_point, output_zero_point);
+
+  return create_mean_nd(
+    flags,
+    /*log2_element_size=*/XNN_LOG2_SIZEOF_INT8_T,
+    xnn_operator_type_sum_nd_qs8,
+    rdsum_config, rsum_config, f32_qs8_cvt_config, s32_f32_cvt_config, /*u32_f32_cvt_config=*/NULL,
+    &params, sizeof(params),
+    sum_op_out);
+}
+
+static void update_params_sum_qs8(
+  xnn_operator_t sum_op,
+  size_t num_elements) {
+  sum_op->params.qs8_mean.scalar.scale *= 1.0f;
+  sum_op->params.qs8_mean.scalar.num_elements = num_elements;
+}
+
+enum xnn_status xnn_reshape_sum_nd_qs8(
+    xnn_operator_t sum_op,
+    size_t num_reduction_axes,
+    const size_t* reduction_axes,
+    size_t num_input_dims,
+    const size_t* input_shape,
+    size_t* workspace_size,
+    size_t* workspace_alignment,
+    pthreadpool_t threadpool)
+{
+  return reshape_mean_nd(
+    sum_op,
+    num_reduction_axes, reduction_axes,
+    num_input_dims, input_shape,
+    workspace_size, workspace_alignment,
+    /*log2_data_element_size=*/XNN_LOG2_SIZEOF_INT8_T,
+    /*log2_accumulator_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    xnn_operator_type_sum_nd_qs8,
+    /*scale_params=*/&sum_op->params.qs8_mean,
+    /*scale_params_size=*/sizeof(sum_op->params.qs8_mean),
+    update_params_sum_qs8,
+    threadpool);
+}
+
+enum xnn_status xnn_setup_sum_nd_qs8(
+    xnn_operator_t sum_op,
+    void* workspace,
+    const void* input,
+    void* output)
+{
+  return setup_mean_nd(
+    sum_op,
+    workspace, input, output,
+    xnn_operator_type_sum_nd_qs8);
+}
+
+enum xnn_status xnn_create_sum_nd_qu8(
+  float scale,
+  uint8_t input_zero_point,
+  uint8_t output_zero_point,
+  uint32_t flags,
+  xnn_operator_t* sum_op_out)
+{
+  const struct xnn_reduce_config* rsum_config = xnn_init_qu8_rsum_config();
+  const struct xnn_reduce_config* rdsum_config = xnn_init_qu8_rdsum_config();
+  const struct xnn_unary_elementwise_config* f32_qu8_cvt_config = xnn_init_f32_to_qu8_cvt_config();
+  const struct xnn_unary_elementwise_config* u32_f32_cvt_config = xnn_init_u32_to_f32_cvt_config();
+  if (rdsum_config == NULL || rsum_config == NULL || f32_qu8_cvt_config == NULL || u32_f32_cvt_config == NULL) {
+    xnn_log_error("failed to create %s operator: unsupported hardware configuration",
+                  xnn_operator_type_to_string(xnn_operator_type_sum_nd_qu8));
+    return xnn_status_unsupported_hardware;
+  }
+
+  struct xnn_qu8_mean_minmax_params params;
+  rsum_config->init.qu8_mean(&params, scale, -1, input_zero_point, output_zero_point);
+
+  return create_mean_nd(
+    flags,
+    /*log2_element_size=*/XNN_LOG2_SIZEOF_UINT8_T,
+    xnn_operator_type_sum_nd_qu8,
+    rdsum_config, rsum_config, f32_qu8_cvt_config, /*s32_f32_cvt_config=*/NULL, u32_f32_cvt_config,
+    &params, sizeof(params),
+    sum_op_out);
+}
+
+static void update_params_sum_qu8(
+  xnn_operator_t sum_op,
+  size_t num_elements) {
+  sum_op->params.qu8_mean.scalar.scale *= 1.0f;
+  sum_op->params.qu8_mean.scalar.num_elements = num_elements;
+}
+
+
+enum xnn_status xnn_reshape_sum_nd_qu8(
+    xnn_operator_t sum_op,
+    size_t num_reduction_axes,
+    const size_t* reduction_axes,
+    size_t num_input_dims,
+    const size_t* input_shape,
+    size_t* workspace_size,
+    size_t* workspace_alignment,
+    pthreadpool_t threadpool)
+{
+  return reshape_mean_nd(
+    sum_op,
+    num_reduction_axes, reduction_axes,
+    num_input_dims, input_shape,
+    workspace_size, workspace_alignment,
+    /*log2_data_element_size=*/XNN_LOG2_SIZEOF_UINT8_T,
+    /*log2_accumulator_element_size=*/XNN_LOG2_SIZEOF_FLOAT,
+    xnn_operator_type_sum_nd_qu8,
+    /*scale_params=*/&sum_op->params.qu8_mean,
+    /*scale_params_size=*/sizeof(sum_op->params.qu8_mean),
+    update_params_sum_qu8,
+    threadpool);
+}
+
+enum xnn_status xnn_setup_sum_nd_qu8(
+    xnn_operator_t sum_op,
+    void* workspace,
+    const void* input,
+    void* output)
+{
+  return setup_mean_nd(
+    sum_op,
+    workspace, input, output,
+    xnn_operator_type_sum_nd_qu8);
+}

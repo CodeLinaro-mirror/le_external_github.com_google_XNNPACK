@@ -85,6 +85,7 @@ SUBGRAPH_SRCS = [
     "src/subgraph/static-mean.c",
     "src/subgraph/static-resize-bilinear-2d.c",
     "src/subgraph/static-slice.c",
+    "src/subgraph/static-sum.c",
     "src/subgraph/static-transpose.c",
     "src/subgraph/tanh.c",
     "src/subgraph/unpooling-2d.c",
