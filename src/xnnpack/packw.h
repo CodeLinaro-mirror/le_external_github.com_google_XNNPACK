@@ -73,20 +73,20 @@ extern "C" {
 
 #undef XNN_UKERNEL
 
-#define XNN_UKERNEL(arch_flags, ukernel, nr_, kr_, sr_, kblock, nr_scale) \
-  XNN_INTERNAL void ukernel(                                              \
-      size_t g,                                                           \
-      size_t nc,                                                          \
-      size_t kc,                                                          \
-      size_t nr,                                                          \
-      size_t kr,                                                          \
-      size_t sr,                                                          \
-      const uint32_t* weights,                                            \
-      const uint32_t* bias,                                               \
-      const void* scale,                                                  \
-      uint32_t* packed_weights,                                           \
-      size_t extra_bytes,                                                 \
-      const void* params);                                                \
+#define XNN_UKERNEL(arch_flags, ukernel, nr_, kr_, sr_, kblock, nr_scale, gio) \
+  XNN_INTERNAL void ukernel(                                                   \
+      size_t g,                                                                \
+      size_t nc,                                                               \
+      size_t kc,                                                               \
+      size_t nr,                                                               \
+      size_t kr,                                                               \
+      size_t sr,                                                               \
+      const uint32_t* weights,                                                 \
+      const uint32_t* bias,                                                    \
+      const void* scale,                                                       \
+      uint32_t* packed_weights,                                                \
+      size_t extra_bytes,                                                      \
+      const void* params);                                                     \
 
 #include "x32-packw/x32-packw.h"
 

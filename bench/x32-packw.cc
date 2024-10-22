@@ -19,7 +19,7 @@ static void x32_packw(benchmark::State& state, const char* net,
   x32_packw(state, ukernel, nr, kr, sr);
 }
 
-#define XNN_UKERNEL(arch_flags, ukernel, nr, kr, sr, kblock, nr_scale)       \
+#define XNN_UKERNEL(arch_flags, ukernel, nr, kr, sr, kblock, nr_scale, gio)       \
 BENCHMARK_CAPTURE_BGEMM(x32_packw, ukernel##_, ukernel, arch_flags, nr, kr, sr);
 
 #include "x32-packw/x32-packw.h"
