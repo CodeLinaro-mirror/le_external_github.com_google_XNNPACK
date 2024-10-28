@@ -167,6 +167,10 @@ SET(NON_PROD_AVXVNNI_MICROKERNEL_SRCS
   src/qs8-qu8-packw/gen/qs8-qu8-packw-x16c8-gemm-goi-avxvnni.c
   src/qs8-rsum/gen/qs8-rsum-avxvnni-u32.c
   src/qs8-rsum/gen/qs8-rsum-avxvnni-u64-acc2.c
-  src/qs8-rsum/gen/qs8-rsum-avxvnni-u128-acc4.c)
+  src/qs8-rsum/gen/qs8-rsum-avxvnni-u128-acc4.c
+  src/x8-packw/gen/x8-packw-x8c8-gemm-goi-avxvnni-prfm.c
+  src/x8-packw/gen/x8-packw-x8c8-gemm-goi-avxvnni.c
+  src/x8-packw/gen/x8-packw-x16c8-gemm-goi-avxvnni-prfm.c
+  src/x8-packw/gen/x8-packw-x16c8-gemm-goi-avxvnni.c)
 
 SET(ALL_AVXVNNI_MICROKERNEL_SRCS ${PROD_AVXVNNI_MICROKERNEL_SRCS} + ${NON_PROD_AVXVNNI_MICROKERNEL_SRCS})
