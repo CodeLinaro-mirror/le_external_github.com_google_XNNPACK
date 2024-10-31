@@ -235,7 +235,14 @@ template <typename T>
 struct AbsOp {
   explicit AbsOp(const xnn_unary_uparams*) {}
 
+  int operator()(int x) const { return std::abs(x); }
   float operator()(float x) const { return std::abs(x); }
+  xnn_float16 operator()(xnn_float16 x) const {
+    return xnn_float16_from_bits(xnn_float16_to_bits(x) & 0x7fff);
+  }
+  xnn_bfloat16 operator()(xnn_bfloat16 x) const {
+    return xnn_bfloat16_from_bits(xnn_bfloat16_to_bits(x) & 0x7fff);
+  }
 };
 
 template <typename T>
