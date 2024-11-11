@@ -41,7 +41,7 @@ TEST(ukernel, alpha) {                                                          
     params.elu.alpha = alpha;                                                                                           \
     VUnaryMicrokernelTester()                                                                                           \
       .batch_size(batch_size)                                                                                           \
-      .Test<TestInfo>(ukernel, init_params, params);                                                                    \
+      .Test<TestInfo, datatype, datatype>(ukernel, init_params, params);                                                \
   }                                                                                                                     \
 }
 #include "f16-velu/f16-velu.h"

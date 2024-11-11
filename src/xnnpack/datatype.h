@@ -6,12 +6,13 @@
 #pragma once
 
 #include <assert.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "xnnpack.h"
 #include "xnnpack/common.h"
 #include "xnnpack/math.h"
+#include "xnnpack/quantized.h"
 
 #ifdef __cplusplus
 #include <type_traits>
@@ -44,9 +45,9 @@ bool xnn_datatype_is_byte_addressable(enum xnn_datatype t);
 
 template <typename T>
 xnn_datatype xnn_datatype_of() {
-  if (std::is_same<T, uint8_t>::value) {
+  if (std::is_same<T, xnnpack::quantized<uint8_t>>::value) {
     return xnn_datatype_quint8;
-  } else if (std::is_same<T, int8_t>::value) {
+  } else if (std::is_same<T, xnnpack::quantized<int8_t>>::value) {
     return xnn_datatype_qint8;
   } else if (std::is_same<T, xnn_float16>::value) {
     return xnn_datatype_fp16;

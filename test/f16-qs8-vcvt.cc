@@ -5,9 +5,11 @@
 
 
 #include "xnnpack/microparams-init.h"
+#include "xnnpack/quantized.h"
 #include "xnnpack/vcvt.h"
 #include "vunary-microkernel-tester.h"
 
+#define XNN_QUANTIZED(T) xnnpack::quantized<T>
 #define XNN_CVT_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile,                                                              \
                                 datatype_in, datatype_out, params_type, init_params)                                                           \
   TEST(ukernel, batch_eq) { TestBatchEq<Convert, datatype_in, datatype_out>(arch_flags, batch_tile, ukernel, init_params); }                   \
@@ -18,3 +20,4 @@
   TEST(ukernel, output_zero_point) { TestOutputZeroPoint<Convert, datatype_in, datatype_out>(arch_flags, batch_tile, ukernel, init_params); }
 #include "f16-qs8-vcvt/f16-qs8-vcvt.h"
 #undef XNN_CVT_UKERNEL_WITH_PARAMS
+#undef XNN_QUANTIZED

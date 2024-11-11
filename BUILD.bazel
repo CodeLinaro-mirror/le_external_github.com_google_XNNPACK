@@ -557,6 +557,7 @@ xnnpack_cc_library(
 xnnpack_cxx_library(
     name = "buffer",
     hdrs = ["src/xnnpack/buffer.h"],
+    deps = [":quantized"],
 )
 
 xnnpack_cc_library(
@@ -595,6 +596,12 @@ xnnpack_cc_library(
         ":math",
         ":microparams",
     ],
+)
+
+xnnpack_cc_library(
+    name = "quantized",
+    hdrs = ["src/xnnpack/quantized.h"],
+    compatible_with = [],
 )
 
 xnnpack_cc_library(
@@ -950,6 +957,7 @@ xnnpack_cxx_library(
         ":config_hdrs",
         ":hardware_config",
         ":math",
+        ":quantized",
         ":xnnpack_h",
     ],
 )
@@ -962,6 +970,7 @@ xnnpack_cc_library(
     deps = [
         ":common",
         ":math",
+        ":quantized",
         ":xnnpack_h",
     ],
 )

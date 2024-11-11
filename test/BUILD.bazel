@@ -248,7 +248,10 @@ sh_test(
     srcs = [
         "%s.cc" % kernel.replace("_", "-"),
     ],
-    deps = MICROKERNEL_TEST_DEPS + [":vunary_microkernel_tester"],
+    deps = MICROKERNEL_TEST_DEPS + [
+        ":vunary_microkernel_tester",
+        "//:quantized",
+    ],
 ) for kernel in [
     "f16_vabs",
     "f16_vclamp",

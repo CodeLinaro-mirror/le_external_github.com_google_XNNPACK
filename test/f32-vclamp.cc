@@ -42,7 +42,7 @@ TEST(ukernel, clamp_min) {                                                      
     params.clamp.max = 255;                                                                                             \
     VUnaryMicrokernelTester()                                                                                           \
         .batch_size(batch_size)                                                                                         \
-        .Test<TestInfo>(ukernel, init_params, params);                                                                  \
+        .Test<TestInfo, datatype, datatype>(ukernel, init_params, params);                                              \
   }                                                                                                                     \
 }                                                                                                                       \
                                                                                                                         \
@@ -56,7 +56,7 @@ TEST(ukernel, clamp_max) {                                                      
     params.clamp.max = max;                                                                                             \
     VUnaryMicrokernelTester()                                                                                           \
         .batch_size(batch_size)                                                                                         \
-        .Test<TestInfo>(ukernel, init_params, params);                                                                  \
+        .Test<TestInfo, datatype, datatype>(ukernel, init_params, params);                                              \
   }                                                                                                                     \
 }
 #include "f32-vclamp/f32-vclamp.h"

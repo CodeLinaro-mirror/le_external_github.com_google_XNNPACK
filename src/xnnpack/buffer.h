@@ -17,6 +17,7 @@
 #include "xnnpack.h"
 #include "xnnpack/common.h"
 #include "xnnpack/math.h"
+#include "xnnpack/quantized.h"
 
 namespace xnnpack {
 
@@ -32,6 +33,28 @@ class NumericLimits<xnn_float16> {
  public:
   static xnn_float16 min() { return static_cast<xnn_float16>(-65504); }
   static xnn_float16 max() { return static_cast<xnn_float16>(65504); }
+};
+
+template <>
+class NumericLimits<quantized<uint8_t>> {
+ public:
+  static quantized<uint8_t> min() {
+    return {std::numeric_limits<uint8_t>::lowest()};
+  }
+  static quantized<uint8_t> max() {
+    return {std::numeric_limits<uint8_t>::max()};
+  }
+};
+
+template <>
+class NumericLimits<quantized<int8_t>> {
+ public:
+  static quantized<int8_t> min() {
+    return {std::numeric_limits<int8_t>::lowest()};
+  }
+  static quantized<int8_t> max() {
+    return {std::numeric_limits<int8_t>::max()};
+  }
 };
 
 // This is a container similar to std::vector, but it leaves the memory

@@ -106,9 +106,20 @@ class VUnaryMicrokernelTester {
   //    structure or returns `nullptr` if there is no default initialization.
   template <typename TestInfo, typename In, typename Out,
             typename UKernelParamsType>
-  void Test(void (*ukernel)(size_t, const In*, Out*, const UKernelParamsType*),
+  void Test(void (*ukernel)(size_t,
+                            const typename xnnpack::unwrap_quantized<In>::type*,
+                            typename xnnpack::unwrap_quantized<Out>::type*,
+                            const UKernelParamsType*),
             xnn_init_unary_uparams_fn init_params,
             const xnn_unary_params& params) const {
+    static_assert(!std::is_same<In, int8_t>::value, "This is probably wrong");
+    static_assert(!std::is_same<In, uint8_t>::value, "This is probably wrong");
+    static_assert(!std::is_same<Out, int8_t>::value, "This is probably wrong");
+    static_assert(!std::is_same<Out, uint8_t>::value, "This is probably wrong");
+
+    using InKernel = typename xnnpack::unwrap_quantized<In>::type;
+    using OutKernel = typename xnnpack::unwrap_quantized<Out>::type;
+
     TestInfo test_info;
     auto domain = test_info.Domain(xnn_datatype_of<In>());
     xnnpack::ReplicableRandomDevice rng;
@@ -122,7 +133,8 @@ class VUnaryMicrokernelTester {
       // msan errors if we don't initialize the XNN_EXTRA_BYTES.
       FillRandom(rng, x.data(), x.size(), domain, input_quantization_);
       if (inplace()) {
-        std::copy(x.begin(), x.end(), y.begin());
+        std::copy((InKernel*)x.begin(), (InKernel*)x.end(),
+                  (OutKernel*)y.begin());
       }
       const In* x_data = inplace() ? (const In*)y.data() : x.data();
 
@@ -138,8 +150,8 @@ class VUnaryMicrokernelTester {
       }
 
       // Call optimized micro-kernel.
-      ukernel(batch_size() * sizeof(In), x_data, y.data(),
-              (UKernelParamsType*)&uparams);
+      ukernel(batch_size() * sizeof(In), (const InKernel*)x_data,
+              (OutKernel*)y.data(), (UKernelParamsType*)&uparams);
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -153,9 +165,12 @@ class VUnaryMicrokernelTester {
 
   template <typename TestInfo, typename In, typename Out,
             typename UKernelParamsType>
-  void Test(void (*ukernel)(size_t, const In*, Out*, const UKernelParamsType*),
+  void Test(void (*ukernel)(size_t,
+                            const typename xnnpack::unwrap_quantized<In>::type*,
+                            typename xnnpack::unwrap_quantized<Out>::type*,
+                            const UKernelParamsType*),
             xnn_init_unary_uparams_fn init_params) const {
-    Test<TestInfo>(ukernel, init_params, TestInfo().DefaultParams());
+    Test<TestInfo, In, Out>(ukernel, init_params, TestInfo().DefaultParams());
   }
 
   template <typename TestInfo, typename In, typename Out,
@@ -193,8 +208,8 @@ class VUnaryMicrokernelTester {
   void Test(void (*ukernel)(size_t, const In*, Out*, const UKernelParamsType*),
             xnn_init_unary_uparams_fn init_params, std::vector<In> inputs,
             const std::vector<Out>& expected, int tolerance_ulp) const {
-    Test<TestInfo>(ukernel, init_params, TestInfo().DefaultParams(), inputs,
-                   expected, tolerance_ulp);
+    Test<TestInfo, In, Out>(ukernel, init_params, TestInfo().DefaultParams(),
+                            inputs, expected, tolerance_ulp);
   }
 
  private:
@@ -213,7 +228,7 @@ void TestBatchEq(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
   const size_t batch_scale = get_batch_scale<In>();
   VUnaryMicrokernelTester()
       .batch_size(batch_tile * batch_scale)
-      .Test<TestInfo>(ukernel, init_params, args...);
+      .Test<TestInfo, In, Out>(ukernel, init_params, args...);
 }
 
 template <typename TestInfo, typename In, typename Out, typename UKernelFn,
@@ -228,7 +243,7 @@ void TestBatchDiv(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
        batch_size += batch_step) {
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }
 
@@ -243,7 +258,7 @@ void TestBatchLT(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
   for (size_t batch_size = 1; batch_size < batch_end; batch_size++) {
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }
 
@@ -259,7 +274,7 @@ void TestBatchGT(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
        batch_size++) {
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }
 
@@ -276,7 +291,7 @@ void TestInPlace(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
         .inplace(true)
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }
 
@@ -296,7 +311,7 @@ void TestInputScale(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
           .batch_size(batch_size)
           .input_quantization(input_quantization)
           .output_quantization(output_quantization)
-          .Test<TestInfo>(ukernel, init_params, args...);
+          .Test<TestInfo, In, Out>(ukernel, init_params, args...);
     }
   }
 }
@@ -317,7 +332,7 @@ void TestOutputScale(uint64_t arch_flags, size_t batch_tile, UKernelFn ukernel,
           .batch_size(batch_size)
           .input_quantization(input_quantization)
           .output_quantization(output_quantization)
-          .Test<TestInfo>(ukernel, init_params, args...);
+          .Test<TestInfo, In, Out>(ukernel, init_params, args...);
     }
   }
 }
@@ -340,7 +355,7 @@ void TestInputZeroPoint(uint64_t arch_flags, size_t batch_tile,
           .batch_size(batch_size)
           .input_quantization(input_quantization)
           .output_quantization(output_quantization)
-          .Test<TestInfo>(ukernel, init_params, args...);
+          .Test<TestInfo, In, Out>(ukernel, init_params, args...);
     }
   }
 }
@@ -363,7 +378,7 @@ void TestOutputZeroPoint(uint64_t arch_flags, size_t batch_tile,
           .batch_size(batch_size)
           .input_quantization(input_quantization)
           .output_quantization(output_quantization)
-          .Test<TestInfo>(ukernel, init_params, args...);
+          .Test<TestInfo, In, Out>(ukernel, init_params, args...);
     }
   }
 }
@@ -382,7 +397,7 @@ void TestOutputSaturation(uint64_t arch_flags, size_t batch_tile,
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
         .output_quantization({0, 500.0f})
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }
 
@@ -400,6 +415,6 @@ void TestOutputOverflow(uint64_t arch_flags, size_t batch_tile,
     VUnaryMicrokernelTester()
         .batch_size(batch_size)
         .output_quantization({0, 4294967296.0f})
-        .Test<TestInfo>(ukernel, init_params, args...);
+        .Test<TestInfo, In, Out>(ukernel, init_params, args...);
   }
 }

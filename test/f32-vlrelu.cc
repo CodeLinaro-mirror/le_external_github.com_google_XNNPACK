@@ -41,7 +41,7 @@ TEST(ukernel, negative_slope) {                                                 
     params.leaky_relu.negative_slope = negative_slope;                                                                  \
     VUnaryMicrokernelTester()                                                                                           \
       .batch_size(batch_size)                                                                                           \
-      .Test<TestInfo>(ukernel, init_params, params);                                                                    \
+      .Test<TestInfo, datatype, datatype>(ukernel, init_params, params);                                                \
   }                                                                                                                     \
 }
 #include "f32-vlrelu/f32-vlrelu.h"

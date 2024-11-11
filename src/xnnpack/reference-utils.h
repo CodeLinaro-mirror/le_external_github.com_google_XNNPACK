@@ -10,13 +10,17 @@
 #include <cstdint>
 #include <limits>
 
+#include "xnnpack/quantized.h"
+
 namespace xnnpack {
 
 // A cast that:
 // - Rounds to nearest integer
 // - Replaces NaN with 0
 // - Saturates to the bounds of the result type
-template <typename Result>
+template <
+    typename Result,
+    typename std::enable_if<!xnnpack::is_quantized<Result>::value>::type* = nullptr>
 Result round_float_to_int(float x) {
   x = std::isnan(x) ? 0.0f : x;
   x = std::round(x);
@@ -26,18 +30,30 @@ Result round_float_to_int(float x) {
   // determined a constant that when added to the min/max float values, results
   // in the upper bound of the integer range.
   constexpr int half_mantissa = sizeof(Result) * 8 > 23 ? 127 : 0;
+  // TODO: this is (probably) wrong for fp16 and bf16,
+  // since std::numeric_limits<> produces 0 for unknown types
   x = std::max<float>(x, std::numeric_limits<Result>::min());
   x = std::min<float>(x, std::numeric_limits<Result>::max() - half_mantissa);
   return static_cast<Result>(x);
 }
 
+template <typename Result,
+          typename std::enable_if<xnnpack::is_quantized<Result>::value>::type* = nullptr>
+Result round_float_to_int(float x) {
+  return round_float_to_int<typename Result::type>(x);
+}
+
 template <typename T>
 float dequantize(T x, float scale, int32_t zero_point) {
-  return (static_cast<float>(x) - static_cast<float>(zero_point)) * scale;
+  static_assert(xnnpack::is_quantized<T>::value,
+                "dequantize() requires a quantized<> input");
+  return (static_cast<float>(x.value) - static_cast<float>(zero_point)) * scale;
 }
 
 template <typename T>
 T quantize(float x, float inv_scale, int32_t zero_point) {
+  static_assert(xnnpack::is_quantized<T>::value,
+                "quantize() requires a quantized<> result");
   return round_float_to_int<T>(x * inv_scale + zero_point);
 }
 
