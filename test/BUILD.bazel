@@ -1750,6 +1750,7 @@ xnnpack_unit_test(
         ":replicable_random_device",
         "//:XNNPACK",
         "//:buffer",
+        "//:internal",
         "//:math",
         "//:node_type",
         "//:operator_utils",
