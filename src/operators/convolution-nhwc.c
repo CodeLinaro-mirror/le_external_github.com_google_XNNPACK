@@ -2038,6 +2038,7 @@ static enum xnn_status reshape_gemm(
   struct xnn_hmp_gemm_ukernel gemm_ukernel = gemm_cases[mr - 1];
 
   convolution_op->context.gemm.gemm.gemm = (struct gemm_context){
+      .mr = mr,
       .k_scaled = group_input_channels << log2_input_element_size,
       .a_stride = convolution_op->input_pixel_stride << log2_input_element_size,
       .ga_stride = group_input_channels << log2_input_element_size,
@@ -2051,7 +2052,6 @@ static enum xnn_status reshape_gemm(
       .log2_csize = log2_output_element_size,
       .num_batch_dims = 1,
       .ukernel = gemm_ukernel,
-      .mr = mr,
   };
   convolution_op->context.gemm.gemm.gemm.batch_dims_a[0] = groups;
   convolution_op->context.gemm.gemm.gemm.batch_dims_b[0] = groups;
@@ -2069,33 +2069,46 @@ static enum xnn_status reshape_gemm(
       /*cn_stride=*/1 << log2_output_element_size, mr, nr, num_threads);
 
   if (groups == 1) {
-    #if XNN_MAX_UARCH_TYPES > 1
-      if (xnn_is_hmp_gemm_ukernel(gemm_ukernel)) {
-        convolution_op->compute[0].type = xnn_parallelization_type_2d_tile_2d_with_uarch;
-        convolution_op->compute[0].task_2d_tile_2d_with_id = (pthreadpool_task_2d_tile_2d_with_id_t) xnn_compute_hmp_gemm;
-      } else {
-        convolution_op->compute[0].type = xnn_parallelization_type_2d_tile_2d;
-        convolution_op->compute[0].task_2d_tile_2d = (pthreadpool_task_2d_tile_2d_t) xnn_compute_gemm;
-      }
-    #else
-      convolution_op->compute[0].type = xnn_parallelization_type_2d_tile_2d;
-      convolution_op->compute[0].task_2d_tile_2d = (pthreadpool_task_2d_tile_2d_t) xnn_compute_gemm;
-    #endif
-      convolution_op->compute[0].range[1] = batch_output_size;
-      convolution_op->compute[0].range[0] = group_output_channels;
+#if XNN_MAX_UARCH_TYPES > 1
+    if (xnn_is_hmp_gemm_ukernel(gemm_ukernel)) {
+      convolution_op->compute[0].type =
+          xnn_parallelization_type_2d_tile_2d_dynamic_with_uarch;
+      convolution_op->compute[0].task_2d_tile_2d_dynamic_with_id =
+          (pthreadpool_task_2d_tile_2d_dynamic_with_id_t)xnn_compute_hmp_gemm;
+    } else {
+      convolution_op->compute[0].type =
+          xnn_parallelization_type_2d_tile_2d_dynamic;
+      convolution_op->compute[0].task_2d_tile_2d_dynamic =
+          (pthreadpool_task_2d_tile_2d_dynamic_t)xnn_compute_gemm;
+    }
+#else
+    convolution_op->compute[0].type =
+        xnn_parallelization_type_2d_tile_2d_dynamic;
+    convolution_op->compute[0].task_2d_tile_2d_dynamic =
+        (pthreadpool_task_2d_tile_2d_dynamic_t)xnn_compute_gemm;
+#endif
+    convolution_op->compute[0].range[1] = batch_output_size;
+    convolution_op->compute[0].range[0] = group_output_channels;
   } else {
-    #if XNN_MAX_UARCH_TYPES > 1
-      if (xnn_is_hmp_gemm_ukernel(gemm_ukernel)) {
-        convolution_op->compute[0].type = xnn_parallelization_type_3d_tile_2d_with_uarch;
-        convolution_op->compute[0].task_3d_tile_2d_with_id = (pthreadpool_task_3d_tile_2d_with_id_t) xnn_compute_hmp_grouped_gemm;
-      } else {
-        convolution_op->compute[0].type = xnn_parallelization_type_3d_tile_2d;
-        convolution_op->compute[0].task_3d_tile_2d = (pthreadpool_task_3d_tile_2d_t) xnn_compute_grouped_gemm;
-      }
-    #else
-      convolution_op->compute[0].type = xnn_parallelization_type_3d_tile_2d;
-      convolution_op->compute[0].task_3d_tile_2d = (pthreadpool_task_3d_tile_2d_t) xnn_compute_grouped_gemm;
-    #endif
+#if XNN_MAX_UARCH_TYPES > 1
+    if (xnn_is_hmp_gemm_ukernel(gemm_ukernel)) {
+      convolution_op->compute[0].type =
+          xnn_parallelization_type_3d_tile_2d_dynamic_with_uarch;
+      convolution_op->compute[0].task_3d_tile_2d_dynamic_with_id =
+          (pthreadpool_task_3d_tile_2d_dynamic_with_id_t)
+              xnn_compute_hmp_grouped_gemm;
+    } else {
+      convolution_op->compute[0].type =
+          xnn_parallelization_type_3d_tile_2d_dynamic;
+      convolution_op->compute[0].task_3d_tile_2d_dynamic =
+          (pthreadpool_task_3d_tile_2d_dynamic_t)xnn_compute_grouped_gemm;
+    }
+#else
+    convolution_op->compute[0].type =
+        xnn_parallelization_type_3d_tile_2d_dynamic;
+    convolution_op->compute[0].task_3d_tile_2d_dynamic =
+        (pthreadpool_task_3d_tile_2d_dynamic_t)xnn_compute_grouped_gemm;
+#endif
     convolution_op->compute[0].range[0] = groups;
     convolution_op->compute[0].range[2] = batch_output_size;
     convolution_op->compute[0].range[1] = group_output_channels;

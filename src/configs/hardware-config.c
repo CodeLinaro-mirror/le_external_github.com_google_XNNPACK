@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <stddef.h>
+#include <stdio.h>
 
 #if XNN_ENABLE_CPUINFO
 #include <cpuinfo.h>
@@ -382,57 +383,65 @@ static void init_hardware_config(void) {
   #endif  // XNN_ARCH_HEXAGON
 
 #if XNN_ENABLE_CPUINFO
-    // Set the size of the L1 and L2 data caches.
-    if (!cpuinfo_initialize()) {
-      xnn_log_warning(
-          "Failed to initialize cpuinfo, unable to determine L1/L2 data cache "
-          "properties.");
-    } else {
-      const struct cpuinfo_processor* proc_info = cpuinfo_get_processor(0);
-      if (proc_info != NULL) {
-        // Get the L1 cache information.
-        const struct cpuinfo_cache* l1_data_cache = proc_info->cache.l1d;
-        if (l1_data_cache != NULL) {
-          hardware_config.l1_data_cache_bytes = l1_data_cache->size;
-          hardware_config.l1_data_cache_line_size = l1_data_cache->line_size;
-          hardware_config.l1_data_cache_associativity =
-              l1_data_cache->associativity;
-          hardware_config.l1_data_cache_num_sets = l1_data_cache->sets;
-          xnn_log_info(
-              "l1_data_cache_bytes=%zu, l1_data_cache_line_size=%zu, "
-              "l1_data_cache_associativity=%zu, l1_data_cache_num_sets=%zu.",
-              hardware_config.l1_data_cache_bytes,
-              hardware_config.l1_data_cache_line_size,
-              hardware_config.l1_data_cache_associativity,
-              hardware_config.l1_data_cache_num_sets);
-        } else {
-          xnn_log_warning("Unable to determine L1 data cache properties.");
-        }
-
-        // Get the L2 cache information.
-        const struct cpuinfo_cache* l2_data_cache = proc_info->cache.l2;
-        if (l2_data_cache != NULL) {
-          hardware_config.l2_data_cache_bytes = l2_data_cache->size;
-          hardware_config.l2_data_cache_line_size = l2_data_cache->line_size;
-          hardware_config.l2_data_cache_associativity =
-              l2_data_cache->associativity;
-          hardware_config.l2_data_cache_num_sets = l2_data_cache->sets;
-          xnn_log_info(
-              "l2_data_cache_bytes=%zu, l2_data_cache_line_size=%zu, "
-              "l2_data_cache_associativity=%zu, l2_data_cache_num_sets=%zu.",
-              hardware_config.l2_data_cache_bytes,
-              hardware_config.l2_data_cache_line_size,
-              hardware_config.l2_data_cache_associativity,
-              hardware_config.l2_data_cache_num_sets);
-        } else {
-          xnn_log_warning("Unable to determine L2 data cache properties.");
-        }
+  // Set the size of the L1 and L2 data caches.
+  if (!cpuinfo_initialize()) {
+    xnn_log_warning(
+        "Failed to initialize cpuinfo, unable to determine L1/L2 data cache "
+        "properties.");
+  } else {
+    const struct cpuinfo_processor* proc_info = cpuinfo_get_processor(0);
+    if (proc_info != NULL) {
+      // Get the L1 cache information.
+      const struct cpuinfo_cache* l1_data_cache = proc_info->cache.l1d;
+      if (l1_data_cache != NULL) {
+        hardware_config.l1_data_cache_bytes = l1_data_cache->size;
+        hardware_config.l1_data_cache_line_size = l1_data_cache->line_size;
+        hardware_config.l1_data_cache_associativity =
+            l1_data_cache->associativity;
+        hardware_config.l1_data_cache_num_sets = l1_data_cache->sets;
+        xnn_log_info(
+            "l1_data_cache_bytes=%zu, l1_data_cache_line_size=%zu, "
+            "l1_data_cache_associativity=%zu, l1_data_cache_num_sets=%zu.",
+            hardware_config.l1_data_cache_bytes,
+            hardware_config.l1_data_cache_line_size,
+            hardware_config.l1_data_cache_associativity,
+            hardware_config.l1_data_cache_num_sets);
       } else {
-        xnn_log_warning("Unable to determine L1/L2 data cache properties.");
+        xnn_log_warning("Unable to determine L1 data cache properties.");
       }
+
+      // Get the L2 cache information.
+      const struct cpuinfo_cache* l2_data_cache = proc_info->cache.l2;
+      if (l2_data_cache != NULL) {
+        hardware_config.l2_data_cache_bytes = l2_data_cache->size;
+        hardware_config.l2_data_cache_line_size = l2_data_cache->line_size;
+        hardware_config.l2_data_cache_associativity =
+            l2_data_cache->associativity;
+        hardware_config.l2_data_cache_num_sets = l2_data_cache->sets;
+        xnn_log_info(
+            "l2_data_cache_bytes=%zu, l2_data_cache_line_size=%zu, "
+            "l2_data_cache_associativity=%zu, l2_data_cache_num_sets=%zu.",
+            hardware_config.l2_data_cache_bytes,
+            hardware_config.l2_data_cache_line_size,
+            hardware_config.l2_data_cache_associativity,
+            hardware_config.l2_data_cache_num_sets);
+      } else {
+        xnn_log_warning("Unable to determine L2 data cache properties.");
+      }
+    } else {
+      xnn_log_warning("Unable to determine L1/L2 data cache properties.");
     }
+  }
+
+#if XNN_MAX_UARCH_TYPES > 1
+  // Print what we think we know about the microarchs.
+  xnn_log_info("cpuinfo_get_uarchs_count: %u.\n", cpuinfo_get_uarchs_count());
+  for (int i = 0; i < cpuinfo_get_uarchs_count(); i++) {
+    xnn_log_info("cpu_get_uarch(%i): 0x%x\n", i, cpuinfo_get_uarch(i)->uarch);
+  }
+#endif  // XNN_MAX_UARCH_TYPES > 1
 #else
-    xnn_log_warning("Unable to determine L1/L2 data cache properties.");
+xnn_log_warning("Unable to determine L1/L2 data cache properties.");
 #endif  // XNN_ENABLE_CPUINFO
 }
 
