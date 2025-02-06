@@ -558,7 +558,7 @@ void xnn_compute_hmp_qp8gemm(
   const size_t a_offset = context->packed_lh_offset_fn(
       mr_block_start, context->k_scaled, context->mr, context->kr, context->sr);
   const size_t cm_stride = context->cm_stride;
-  
+
   context->qp8_ukernel.function[uarch_index](
       mr_block_size, nr_block_size, context->k_scaled,
       (const void*)((uintptr_t)context->a + a_offset),
@@ -1655,7 +1655,7 @@ void xnn_compute_scaled_dot_product_attention(
     size_t i = tokens_block_size;
     do {
       // Skip initialization of locals as they will be written to immediately.
-      float rowmax;
+      float rowmax = -INFINITY;
       context->rmax_ukernel(
         /*batch=*/key_value_tokens_scaled,
         /*input=*/logits_row,
@@ -1805,7 +1805,7 @@ void xnn_compute_scaled_dot_product_attention_with_thread(
     size_t i = tokens_block_size;
     do {
       // Skip initialization of locals as they will be written to immediately.
-      float rowmax;
+      float rowmax = -INFINITY;
       context->rmax_ukernel(
         /*batch=*/key_value_tokens_scaled,
         /*input=*/logits_row,
@@ -2210,7 +2210,7 @@ void xnn_compute_f16_qx8_convert(
   const void* input = (const void*) ((uintptr_t) context->x + x_stride * batch_index);
   void* output = (void*) ((uintptr_t) context->y + y_stride * batch_index);
 
-  xnn_float16 minmax[2];
+  xnn_float16 minmax[2] = {xnn_float16_from_bits(UINT16_C(0x7c00)), xnn_float16_from_bits(UINT16_C(0xfc00))};
   context->rminmax_ukernel(n, input, minmax, &context->params);
   xnn_float16 f16_scale;
   context->quantization_params[batch_index] = quantization_params_function(minmax[0], minmax[1], &f16_scale);
@@ -2246,7 +2246,7 @@ void xnn_compute_f32_qx8_convert(
   const void* input = (const void*) ((uintptr_t) context->x + x_stride * batch_index);
   void* output = (void*) ((uintptr_t) context->y + y_stride * batch_index);
 
-  float minmax[2];
+  float minmax[2] = {INFINITY, -INFINITY};
   context->rminmax_ukernel(n, input, minmax, &context->params);
   float scale;
   context->quantization_params[batch_index] = quantization_params_function(minmax[0], minmax[1], &scale);
@@ -2332,6 +2332,7 @@ void xnn_compute_floating_point_softmax(
     float as_float;
     uint16_t as_half;
   } x_max;
+  x_max.as_float = -INFINITY;
   context->rmax_ukernel(n, x, &x_max, &context->rmax_params);
 
   // Second pass: reduce-add & store exp(x-x_max)
