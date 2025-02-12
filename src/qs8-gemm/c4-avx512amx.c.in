@@ -101,8 +101,7 @@ void xnn_${DATATYPE_SPEC}_gemm_minmax${REQUANTIZATION_SPEC}_ukernel_${MR}x${NR}c
   tile_data.colsb[6] = kremainder;  // tmm6 = input remainder
   tile_data.colsb[7] = 64;          // tmm7 = weights remainder
 
-  //_tile_loadconfig(&tile_data);
-  __asm__ volatile ("ldtilecfg %0" :: "m" (tile_data));
+  _tile_loadconfig(&tile_data);
 
   ${OUT_T}* c0 = c;
   $for M in range(1, MR):
@@ -148,10 +147,8 @@ void xnn_${DATATYPE_SPEC}_gemm_minmax${REQUANTIZATION_SPEC}_ukernel_${MR}x${NR}c
     w = (const int32_t*) w + ${NR};
 
     // Zero tile accumulator
-    __asm__ volatile (
-      $for N in range(0, NR, 16):
-        "tilezero %%tmm${N // 16}\\n"
-      ::);
+    $for N in range(0, NR, 16):
+      _tile_zero(${N // 16});
 
     size_t k = kc;
     while (k >= 64 * sizeof(int8_t)) {
@@ -353,7 +350,6 @@ void xnn_${DATATYPE_SPEC}_gemm_minmax${REQUANTIZATION_SPEC}_ukernel_${MR}x${NR}c
       }
   } while (nc != 0);
   // Release tile config
-  //  _tile_release();
-  __asm__ volatile ("tilerelease" ::);
+  _tile_release();
   #endif  // defined(__x86_64__)
 }

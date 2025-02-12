@@ -84,8 +84,7 @@ void xnn_qs8_qc8w_gemm_minmax_fp32_ukernel_7x64c4__avx512amx(
   tile_data.colsb[6] = kremainder;  // tmm6 = input remainder
   tile_data.colsb[7] = 64;          // tmm7 = weights remainder
 
-  //_tile_loadconfig(&tile_data);
-  __asm__ volatile ("ldtilecfg %0" :: "m" (tile_data));
+  _tile_loadconfig(&tile_data);
 
   int8_t* c0 = c;
   int8_t* c1 = (int8_t*) ((uintptr_t) c0 + cm_stride);
@@ -128,12 +127,10 @@ void xnn_qs8_qc8w_gemm_minmax_fp32_ukernel_7x64c4__avx512amx(
     w = (const int32_t*) w + 64;
 
     // Zero tile accumulator
-    __asm__ volatile (
-      "tilezero %%tmm0\n"
-      "tilezero %%tmm1\n"
-      "tilezero %%tmm2\n"
-      "tilezero %%tmm3\n"
-      ::);
+    _tile_zero(0);
+    _tile_zero(1);
+    _tile_zero(2);
+    _tile_zero(3);
 
     size_t k = kc;
     while (k >= 64 * sizeof(int8_t)) {
@@ -500,7 +497,6 @@ void xnn_qs8_qc8w_gemm_minmax_fp32_ukernel_7x64c4__avx512amx(
     }
   } while (nc != 0);
   // Release tile config
-  //  _tile_release();
-  __asm__ volatile ("tilerelease" ::);
+  _tile_release();
   #endif  // defined(__x86_64__)
 }
