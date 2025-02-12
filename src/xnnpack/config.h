@@ -54,6 +54,7 @@ XNN_INTERNAL const struct xnn_binary_elementwise_config* xnn_init_qu8_vmul_confi
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_abs_config();
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_clamp_config();
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_elu_config();
+XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_gelu_config();
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_hswish_config();
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_lrelu_config();
 XNN_INTERNAL const struct xnn_unary_elementwise_config* xnn_init_f16_neg_config();

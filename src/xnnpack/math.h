@@ -572,14 +572,12 @@ XNN_INLINE static float xnn_float16_to_float(xnn_float16 fp16) {
 }
 
 XNN_INLINE static uint16_t xnn_float16_to_bits(xnn_float16 fp16) {
-  uint16_t result;
-  memcpy(&result, &fp16, sizeof(result));
+  const uint16_t result = *(const uint16_t *)&fp16;
   return result;
 }
 
 XNN_INLINE static xnn_float16 xnn_float16_from_bits(uint16_t x) {
-  xnn_float16 result;
-  memcpy(&result, &x, sizeof(result));
+  const xnn_float16 result = *(const xnn_float16 *)&x;
   return result;
 }
 
@@ -594,14 +592,12 @@ XNN_INLINE static float xnn_bfloat16_to_float(xnn_bfloat16 bf16) {
 }
 
 XNN_INLINE static uint16_t xnn_bfloat16_to_bits(xnn_bfloat16 fp16) {
-  uint16_t result;
-  memcpy(&result, &fp16, sizeof(result));
+  const uint16_t result = *(const uint16_t *)&fp16;
   return result;
 }
 
 XNN_INLINE static xnn_bfloat16 xnn_bfloat16_from_bits(uint16_t x) {
-  xnn_bfloat16 result;
-  memcpy(&result, &x, sizeof(result));
+  const xnn_bfloat16 result = *(const xnn_bfloat16 *)&x;
   return result;
 }
 

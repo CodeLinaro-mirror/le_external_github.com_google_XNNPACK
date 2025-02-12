@@ -662,8 +662,6 @@ enum xnn_status xnn_create_runtime_v4(
     }
 
     if (value->fp16_compatible && xnn_value_is_static(value)) {
-      // Value is static and has been converted to FP16 in a new buffer.
-      value->allocation_type = xnn_allocation_type_dynamic;
       // Runtime takes ownership of the data from subgraph.
       value->data = subgraph->values[i].data;
       subgraph->values[i].data = NULL;
@@ -768,8 +766,8 @@ enum xnn_status xnn_reshape_runtime(
       continue;
     }
     assert(opdata->reshape != NULL);
-    xnn_log_debug("reshaping operator %u (%s)", opdata_id,
-                  xnn_operator_type_to_string(opdata->operator_objects[0]->type));
+    // xnn_log_debug("reshaping operator %u (%s)", opdata_id,
+    //               xnn_operator_type_to_string(opdata->operator_objects[0]->type));
     enum xnn_status status = opdata->reshape(opdata, runtime->values, runtime->num_values, runtime->threadpool);
     if (status == xnn_status_reallocation_required) {
       reallocation_required = true;
