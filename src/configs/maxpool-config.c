@@ -140,7 +140,7 @@ static void init_s8_maxpool_config(void) {
       s8_maxpool_config.first_pass_tile_size = 9;
       s8_maxpool_config.remainder_pass_tile_size = 8;
     } else {
-      s8_maxpool_config.ukernel = (xnn_maxpool_ukernel_fn) xnn_s8_maxpool_minmax_ukernel_9p8x__sse2_c16;
+      s8_maxpool_config.ukernel = (xnn_maxpool_ukernel_fn) xnn_s8_maxpool_minmax_ukernel_9p8x__scalar_c1;
       s8_maxpool_config.init.s8 = xnn_init_s8_minmax_scalar_params;
       s8_maxpool_config.first_pass_tile_size = 9;
       s8_maxpool_config.remainder_pass_tile_size = 8;
