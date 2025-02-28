@@ -16,7 +16,6 @@
 #include "xnnpack/common.h"
 #include "xnnpack/isa-checks.h"
 #include "xnnpack/microparams-init.h"
-#include "xnnpack/pavgpool.h"
 #include "avgpool-microkernel-tester.h"
 
 namespace {
@@ -37,13 +36,11 @@ std::string GetTestName(const testing::TestParamInfo<XnnTest::ParamType>& info) 
 
 const XnnTestParam xnn_test_params[] = {
 
-#define XNN_UKERNEL(arch_flags, ukernel, channel_tile, primary_tile, datatype, params_type, init_params) \
-  { #ukernel, AvgPoolMicrokernelTester::Kernel{ukernel, init_params}, arch_flags, channel_tile, primary_tile },
+#define XNN_UKERNEL(arch_flags, ukernel, channel_tile, primary_tile, is_pixelwise, datatype, params_type, init_params) \
+  { #ukernel, AvgPoolMicrokernelTester::Kernel{ukernel, init_params, is_pixelwise}, arch_flags, channel_tile, primary_tile },
 
 #include "f16-avgpool/f16-avgpool-minmax.h"
-#include "f16-pavgpool/f16-pavgpool-minmax.h"
 #include "f32-avgpool/f32-avgpool-minmax.h"
-#include "f32-pavgpool/f32-pavgpool-minmax.h"
 
 #undef XNN_UKERNEL
 

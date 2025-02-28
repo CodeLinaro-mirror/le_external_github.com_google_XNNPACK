@@ -55,8 +55,7 @@ void xnn_f16_${"p" if PIXELWISE else ""}avgpool_minmax_ukernel_9p__f16c_u${SIMD_
     const xnn_float16** input,
     size_t input_offset,
     const xnn_float16* zero,
-    $if PIXELWISE:
-      const xnn_float16* multiplier,
+    const xnn_float16* multiplier,
     xnn_float16* output,
     size_t input_increment,
     size_t output_increment,

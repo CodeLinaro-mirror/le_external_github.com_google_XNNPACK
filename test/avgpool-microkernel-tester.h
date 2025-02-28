@@ -172,185 +172,9 @@ class AvgPoolMicrokernelTester {
     return this->iterations_;
   }
 
-  void Test(xnn_f16_avgpool_minmax_unipass_ukernel_fn avgpool_minmax, xnn_init_f16_scaleminmax_params_fn init_params) const {
-    xnnpack::ReplicableRandomDevice rng;
-    std::uniform_real_distribution<float> f32dist;
-
-    xnnpack::Buffer<const xnn_float16*> indirect_input((output_pixels() - 1) * step() + pooling_elements());
-    xnnpack::Buffer<xnn_float16> input(XNN_EXTRA_BYTES / sizeof(xnn_float16) +
-      input_offset() + indirect_input.size() * channels());
-    xnnpack::Buffer<xnn_float16> zero(channels() + XNN_EXTRA_BYTES / sizeof(xnn_float16), 0);
-    xnnpack::Buffer<xnn_float16> output((output_pixels() - 1) * output_stride() + channels());
-    xnnpack::Buffer<float> output_ref(output_pixels() * channels());
-    for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
-      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(xnn_float16), input.end(), std::nanf(""));
-
-      for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
-        indirect_input[i] = input.data() + i * channels();
-      }
-      std::shuffle(indirect_input.begin(),
-        indirect_input.begin() + (output_pixels() - 1) * step() + pooling_elements(), rng);
-      if (zero_index_mod2() != SIZE_MAX) {
-        for (size_t i = zero_index_mod2(); i < indirect_input.size(); i += 2) {
-          indirect_input[i] = zero.data();
-        }
-      }
-
-      // Compute reference results, without clamping.
-      for (size_t x = 0; x < output_pixels(); x++) {
-        for (size_t c = 0; c < channels(); c++) {
-          float acc = 0.0f;
-          for (size_t p = 0; p < pooling_elements(); p++) {
-            const xnn_float16* row = indirect_input[x * step() + p];
-            if (row != zero.data()) {
-              acc += row[c + input_offset()];
-            }
-          }
-          output_ref[x * channels() + c] = acc / float(pooling_elements());
-        }
-      }
-
-      // Compute clamping parameters.
-      const float accumulated_min = *std::min_element(output_ref.cbegin(), output_ref.cend());
-      const float accumulated_max = *std::max_element(output_ref.cbegin(), output_ref.cend());
-      const float accumulated_range = accumulated_max - accumulated_min;
-      float output_min_as_float = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
-      float output_max_as_float = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-      const xnn_float16 output_min_as_half = static_cast<xnn_float16>(output_min_as_float);
-      const xnn_float16 output_max_as_half = static_cast<xnn_float16>(output_max_as_float);
-      output_min_as_float = output_min_as_half;
-      output_max_as_float = output_max_as_half;
-
-      // Clamp reference results.
-      for (float& output_value : output_ref) {
-        output_value = std::max(std::min(output_value, output_max_as_float), output_min_as_float);
-      }
-
-      // Prepare parameters.
-      xnn_f16_scaleminmax_params params;
-      init_params(&params, static_cast<xnn_float16>(1.0f / float(pooling_elements())), output_min_as_half, output_max_as_half);
-
-      // Call optimized micro-kernel.
-      avgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        reinterpret_cast<const xnn_float16**>(indirect_input.data()), input_offset() * sizeof(xnn_float16), zero.data(),
-        output.data(),
-        step() * sizeof(void*),
-        (output_stride()) * sizeof(xnn_float16),
-        &params);
-
-      // Verify results.
-      for (size_t x = 0; x < output_pixels(); x++) {
-        for (size_t c = 0; c < channels(); c++) {
-          ASSERT_GE(output[x * output_stride() + c], output_min_as_float)
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-          ASSERT_LE(output[x * output_stride() + c], output_max_as_float)
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-          ASSERT_NEAR(
-              output[x * output_stride() + c],
-              output_ref[x * channels() + c],
-              std::max(1.0e-4f, std::abs(output_ref[x * channels() + c]) * 3.0e-3f))
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-        }
-      }
-    }
-  }
-
-  void Test(xnn_f32_avgpool_minmax_unipass_ukernel_fn avgpool_minmax, xnn_init_f32_scaleminmax_params_fn init_params) const {
-    xnnpack::ReplicableRandomDevice rng;
-    std::uniform_real_distribution<float> f32dist;
-
-    xnnpack::Buffer<const float*> indirect_input((output_pixels() - 1) * step() + pooling_elements());
-    xnnpack::Buffer<float> input(XNN_EXTRA_BYTES / sizeof(float) +
-      input_offset() + indirect_input.size() * channels());
-    xnnpack::Buffer<float> zero(channels() + XNN_EXTRA_BYTES / sizeof(float), 0.0f);
-    xnnpack::Buffer<float> output((output_pixels() - 1) * output_stride() + channels());
-    xnnpack::Buffer<float> output_ref(output_pixels() * channels());
-    for (size_t iteration = 0; iteration < iterations(); iteration++) {
-      std::generate(input.begin(), input.end(), [&]() { return f32dist(rng); });
-      std::fill(input.begin(), input.begin() + input_offset(), std::nanf(""));
-      std::fill(input.end() - XNN_EXTRA_BYTES / sizeof(float), input.end(), std::nanf(""));
-
-      for (size_t i = 0; i < (output_pixels() - 1) * step() + pooling_elements(); i++) {
-        indirect_input[i] = input.data() + i * channels();
-      }
-      std::shuffle(indirect_input.begin(),
-        indirect_input.begin() + (output_pixels() - 1) * step() + pooling_elements(), rng);
-      if (zero_index_mod2() != SIZE_MAX) {
-        for (size_t i = zero_index_mod2(); i < indirect_input.size(); i += 2) {
-          indirect_input[i] = zero.data();
-        }
-      }
-
-      // Compute reference results, without clamping.
-      for (size_t x = 0; x < output_pixels(); x++) {
-        for (size_t c = 0; c < channels(); c++) {
-          float acc = 0.0f;
-          for (size_t p = 0; p < pooling_elements(); p++) {
-            const float* row = indirect_input[x * step() + p];
-            if (row != zero.data()) {
-              acc += row[c + input_offset()];
-            }
-          }
-          output_ref[x * channels() + c] = acc / float(pooling_elements());
-        }
-      }
-
-      // Compute clamping parameters.
-      const float accumulated_min = *std::min_element(output_ref.cbegin(), output_ref.cend());
-      const float accumulated_max = *std::max_element(output_ref.cbegin(), output_ref.cend());
-      const float accumulated_range = accumulated_max - accumulated_min;
-      const float output_min = accumulated_min + float(qmin()) / 255.0f * accumulated_range;
-      const float output_max = accumulated_max - float(255 - qmax()) / 255.0f * accumulated_range;
-
-      // Clamp reference results.
-      for (float& output_value : output_ref) {
-        output_value = std::max(std::min(output_value, output_max), output_min);
-      }
-
-      // Prepare parameters.
-      xnn_f32_scaleminmax_params params;
-      init_params(&params, 1.0f / float(pooling_elements()), output_min, output_max);
-
-      // Call optimized micro-kernel.
-      avgpool_minmax(output_pixels(), pooling_elements(), channels(),
-        indirect_input.data(), input_offset() * sizeof(float), zero.data(),
-        output.data(),
-        step() * sizeof(void*),
-        (output_stride()) * sizeof(float),
-        &params);
-
-      // Verify results.
-      for (size_t x = 0; x < output_pixels(); x++) {
-        for (size_t c = 0; c < channels(); c++) {
-          ASSERT_GE(output[x * output_stride() + c], output_min)
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-          ASSERT_LE(output[x * output_stride() + c], output_max)
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-          ASSERT_NEAR(
-              output[x * output_stride() + c],
-              output_ref[x * channels() + c],
-              std::abs(output_ref[x * channels() + c]) * 1.0e-6f)
-            << "at pixel " << x << " / " << output_pixels() << ", channel " << c << " / " << channels()
-            << ", pooling elements = " << pooling_elements() << ", step = " << step()
-            << ", input offset = " << input_offset();
-        }
-      }
-    }
-  }
-
-  void Test(xnn_f16_pavgpool_minmax_unipass_ukernel_fn pavgpool_minmax, xnn_init_f16_scaleminmax_params_fn init_params) const {
+  void Test(xnn_f16_avgpool_ukernel_fn pavgpool_minmax,
+            xnn_init_f16_scaleminmax_params_fn init_params,
+            bool is_pixelwise) const {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> m32dist(0.1f, 0.5f);
@@ -389,7 +213,11 @@ class AvgPoolMicrokernelTester {
               acc += row[c + input_offset()];
             }
           }
-          output_ref[x * channels() + c] = acc * multiplier[x];
+          if (is_pixelwise) {
+            output_ref[x * channels() + c] = acc * multiplier[x];
+          } else {
+            output_ref[x * channels() + c] = acc / float(pooling_elements());
+          }
         }
       }
 
@@ -411,7 +239,7 @@ class AvgPoolMicrokernelTester {
 
       // Prepare parameters.
       xnn_f16_scaleminmax_params params;
-      init_params(&params, 0.0f, output_min_as_half, output_max_as_half);
+      init_params(&params, 1.0f / float(pooling_elements()), output_min_as_half, output_max_as_half);
 
       // Call optimized micro-kernel.
       pavgpool_minmax(output_pixels(), pooling_elements(), channels(),
@@ -444,7 +272,9 @@ class AvgPoolMicrokernelTester {
     }
   }
 
-  void Test(xnn_f32_pavgpool_minmax_unipass_ukernel_fn pavgpool_minmax, xnn_init_f32_scaleminmax_params_fn init_params) const {
+  void Test(xnn_f32_avgpool_ukernel_fn pavgpool_minmax,
+            xnn_init_f32_scaleminmax_params_fn init_params,
+            bool is_pixelwise) const {
     xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> m32dist(0.1f, 0.5f);
@@ -483,7 +313,11 @@ class AvgPoolMicrokernelTester {
               acc += row[c + input_offset()];
             }
           }
-          output_ref[x * channels() + c] = acc * multiplier[x];
+          if (is_pixelwise) {
+            output_ref[x * channels() + c] = acc * multiplier[x];
+          } else {
+            output_ref[x * channels() + c] = acc / float(pooling_elements());
+          }
         }
       }
 
@@ -501,7 +335,7 @@ class AvgPoolMicrokernelTester {
 
       // Prepare parameters.
       xnn_f32_scaleminmax_params params;
-      init_params(&params, 0.0f, output_min, output_max);
+      init_params(&params, 1.0f / float(pooling_elements()), output_min, output_max);
 
       // Call optimized micro-kernel.
       pavgpool_minmax(output_pixels(), pooling_elements(), channels(),
@@ -535,17 +369,11 @@ class AvgPoolMicrokernelTester {
   }
 
   struct Kernel {
-    explicit Kernel(xnn_f16_avgpool_minmax_unipass_ukernel_fn fn, xnn_init_f16_scaleminmax_params_fn init) {
-      dispatch = [fn, init](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init); };
+    explicit Kernel(xnn_f16_avgpool_ukernel_fn fn, xnn_init_f16_scaleminmax_params_fn init, bool is_pixelwise) {
+      dispatch = [=](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init, is_pixelwise); };
     }
-    explicit Kernel(xnn_f16_pavgpool_minmax_unipass_ukernel_fn fn, xnn_init_f16_scaleminmax_params_fn init) {
-      dispatch = [fn, init](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init); };
-    }
-    explicit Kernel(xnn_f32_avgpool_minmax_unipass_ukernel_fn fn, xnn_init_f32_scaleminmax_params_fn init) {
-      dispatch = [fn, init](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init); };
-    }
-    explicit Kernel(xnn_f32_pavgpool_minmax_unipass_ukernel_fn fn, xnn_init_f32_scaleminmax_params_fn init) {
-      dispatch = [fn, init](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init); };
+    explicit Kernel(xnn_f32_avgpool_ukernel_fn fn, xnn_init_f32_scaleminmax_params_fn init, bool is_pixelwise) {
+      dispatch = [=](const AvgPoolMicrokernelTester& tester) { tester.Test(fn, init, is_pixelwise); };
     }
     std::function<void(const AvgPoolMicrokernelTester&)> dispatch;
   };

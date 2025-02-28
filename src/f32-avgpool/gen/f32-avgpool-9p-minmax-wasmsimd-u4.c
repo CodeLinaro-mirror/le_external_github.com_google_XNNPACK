@@ -23,6 +23,7 @@ void xnn_f32_avgpool_minmax_ukernel_9p__wasmsimd_u4(
     const float** input,
     size_t input_offset,
     const float* zero,
+    const float* multiplier,
     float* output,
     size_t input_increment,
     size_t output_increment,

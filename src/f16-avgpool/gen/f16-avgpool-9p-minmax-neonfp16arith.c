@@ -23,6 +23,7 @@ void xnn_f16_avgpool_minmax_ukernel_9p__neonfp16arith_u8(
     const xnn_float16** input,
     size_t input_offset,
     const xnn_float16* zero,
+    const xnn_float16* multiplier,
     xnn_float16* output,
     size_t input_increment,
     size_t output_increment,

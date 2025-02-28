@@ -21,8 +21,7 @@ void xnn_${DATATYPE}_${"p" if PIXELWISE else ""}avgpool_minmax_ukernel_9p__${ARC
     const ${CTYPE}** input,
     size_t input_offset,
     const ${CTYPE}* zero,
-    $if PIXELWISE:
-      const ${CTYPE}* multiplier,
+    const ${CTYPE}* multiplier,
     ${CTYPE}* output,
     size_t input_increment,
     size_t output_increment,
