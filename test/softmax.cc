@@ -29,12 +29,13 @@ Tensor<T> softmax(Tensor<T> x) {
     i.push_back(0);
     const T* x_i = &x(i);
     T* y_i = &y(i);
+    double max = *std::max_element(x_i, x_i + channels);
     double sum_exp = 0.0;
     for (size_t c = 0; c < channels; c++) {
-      sum_exp += std::exp(static_cast<double>(x_i[c]));
+      sum_exp += std::exp(static_cast<double>(x_i[c]) - max);
     }
     for (size_t c = 0; c < channels; c++) {
-      y_i[c] = std::exp(static_cast<double>(x_i[c])) / sum_exp;
+      y_i[c] = std::exp(static_cast<double>(x_i[c]) - max) / sum_exp;
     }
   }
   return y;
