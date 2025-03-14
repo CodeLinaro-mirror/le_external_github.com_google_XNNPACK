@@ -6,25 +6,19 @@
 #include "src/xnnpack/vunary.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <random>
-#include <vector>
 
 #include "bench/utils.h"
 #include "include/xnnpack.h"
 #include "src/xnnpack/buffer.h"
 #include "src/xnnpack/common.h"
-#include "src/xnnpack/hardware-config.h"
 #include "src/xnnpack/math.h"
 #include "src/xnnpack/microfnptr.h"
-#include "src/xnnpack/microparams-init.h"
 #include "src/xnnpack/microparams.h"
 #include "src/xnnpack/vcvt.h"
-#include "src/xnnpack/vunary.h"
 #include <benchmark/benchmark.h>
 
 template <typename T>
@@ -198,6 +192,7 @@ void vunary(benchmark::State& state, uint64_t arch_flags,
 #include "src/f16-vtanh/f16-vtanh.h"
 #include "src/f32-vabs/f32-vabs.h"
 #include "src/f32-vapproxgelu/f32-vapproxgelu.h"
+#include "src/f32-vcos/f32-vcos.h"
 #include "src/f32-vgelu/f32-vgelu.h"
 #include "src/f32-vhswish/f32-vhswish.h"
 #include "src/f32-vlog/f32-vlog.h"
@@ -209,6 +204,7 @@ void vunary(benchmark::State& state, uint64_t arch_flags,
 #include "src/f32-vrnd/f32-vrndz.h"
 #include "src/f32-vrsqrt/f32-vrsqrt.h"
 #include "src/f32-vsigmoid/f32-vsigmoid.h"
+#include "src/f32-vsin/f32-vsin.h"
 #include "src/f32-vsqr/f32-vsqr.h"
 #include "src/f32-vsqrt/f32-vsqrt.h"
 #include "src/f32-vtanh/f32-vtanh.h"

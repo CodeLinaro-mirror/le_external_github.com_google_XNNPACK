@@ -154,6 +154,7 @@ tools/generate-vunary-test.py --ukernel f16-vtanh --output test/f16-vtanh.cc &
 tools/generate-vunary-test.py --ukernel f32-vabs --output test/f32-vabs.cc &
 tools/generate-vunary-test.py --ukernel f32-vapproxgelu --output test/f32-vapproxgelu.cc &
 tools/generate-vunary-test.py --ukernel f32-vclamp --output test/f32-vclamp.cc &
+tools/generate-vunary-test.py --ukernel f32-vcos --output test/f32-vcos.cc &
 tools/generate-vunary-test.py --ukernel f32-velu --output test/f32-velu.cc &
 tools/generate-vunary-test.py --ukernel f32-vgelu --output test/f32-vgelu.cc &
 tools/generate-vunary-test.py --ukernel f32-vexp --output test/f32-vexp.cc &
@@ -166,6 +167,7 @@ tools/generate-vunary-test.py --ukernel f32-vrndu  --output test/f32-vrndu.cc &
 tools/generate-vunary-test.py --ukernel f32-vrndz  --output test/f32-vrndz.cc &
 tools/generate-vunary-test.py --ukernel f32-vrsqrt --output test/f32-vrsqrt.cc &
 tools/generate-vunary-test.py --ukernel f32-vsigmoid --output test/f32-vsigmoid.cc &
+tools/generate-vunary-test.py --ukernel f32-vsin --output test/f32-vsin.cc &
 tools/generate-vunary-test.py --ukernel f32-vsqr --output test/f32-vsqr.cc &
 tools/generate-vunary-test.py --ukernel f32-vsqrt --output test/f32-vsqrt.cc &
 tools/generate-vunary-test.py --ukernel f32-vtanh --output test/f32-vtanh.cc &

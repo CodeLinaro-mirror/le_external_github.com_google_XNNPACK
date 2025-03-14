@@ -4,6 +4,14 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "src/xnnpack/common.h"
+#include "src/xnnpack/hardware-config.h"
+#include "src/xnnpack/microparams.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef XNN_UKERNEL_WITH_PARAMS
 #define XNN_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile, datatype, params_type, init_params) \
     XNN_UKERNEL(arch_flags, ukernel, batch_tile, vector_tile, datatype)
@@ -62,3 +70,6 @@ XNN_UKERNEL_WITH_PARAMS(0, xnn_u8_vclamp_ukernel__scalar_u4, 4, false, XNN_QUANT
 #undef XNN_QUANTIZED
 #endif
 
+#ifdef __cplusplus
+}  // extern "C"
+#endif
