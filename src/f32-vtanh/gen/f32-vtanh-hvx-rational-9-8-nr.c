@@ -12,14 +12,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "src/xnnpack/simd/f32-neon.h"
+#include "src/xnnpack/simd/f32-hvx.h"
 
 #include "src/xnnpack/common.h"
 #include "src/xnnpack/microparams.h"
 #include "src/xnnpack/vunary.h"
 
 
-void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u4(
+void xnn_f32_vtanh_ukernel__hvx_rational_9_8_nr_u32(
     size_t batch,
     const float* input,
     float* output,
@@ -29,7 +29,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u4(
   assert(batch % sizeof(float) == 0);
   assert(input != NULL);
   assert(output != NULL);
-  assert(xnn_simd_size_f32 == 4);
+  assert(xnn_simd_size_f32 == 32);
 
   // Cap the inputs to this value as `tanh(x)` will always be `+/-1.0f` beyond
   // this point. This value is chosen as the first floating point number as of
@@ -129,7 +129,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u4(
   }
 }
 
-void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u8(
+void xnn_f32_vtanh_ukernel__hvx_rational_9_8_nr_u64(
     size_t batch,
     const float* input,
     float* output,
@@ -139,7 +139,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u8(
   assert(batch % sizeof(float) == 0);
   assert(input != NULL);
   assert(output != NULL);
-  assert(xnn_simd_size_f32 == 4);
+  assert(xnn_simd_size_f32 == 32);
 
   // Cap the inputs to this value as `tanh(x)` will always be `+/-1.0f` beyond
   // this point. This value is chosen as the first floating point number as of
@@ -171,10 +171,10 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u8(
   XNN_SIMD_CONST_F32(vone, 1.0f);
   XNN_SIMD_CONST_F32(vtwo, 2.0f);
 
-  for (; batch >= 8 * sizeof(float); batch -= 8 * sizeof(float)) {
+  for (; batch >= 64 * sizeof(float); batch -= 64 * sizeof(float)) {
     xnn_simd_f32_t vx_0 = xnn_loadu_f32(input);
     xnn_simd_f32_t vx_1 = xnn_loadu_f32(input + 1 * xnn_simd_size_f32);
-    input += 8;
+    input += 64;
 
     // Clamp the inputs to the interpolation range.
     vx_0 = xnn_min_f32(vmax_x, vx_0);
@@ -220,7 +220,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u8(
 
     xnn_storeu_f32(output, vy_0);
     xnn_storeu_f32(output + 1 * xnn_simd_size_f32, vy_1);
-    output += 8;
+    output += 64;
   }
   for (; batch >= xnn_simd_bytes_f32; batch -= xnn_simd_bytes_f32) {
     xnn_simd_f32_t vx = xnn_loadu_f32(input);
@@ -290,7 +290,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u8(
   }
 }
 
-void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u12(
+void xnn_f32_vtanh_ukernel__hvx_rational_9_8_nr_u96(
     size_t batch,
     const float* input,
     float* output,
@@ -300,7 +300,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u12(
   assert(batch % sizeof(float) == 0);
   assert(input != NULL);
   assert(output != NULL);
-  assert(xnn_simd_size_f32 == 4);
+  assert(xnn_simd_size_f32 == 32);
 
   // Cap the inputs to this value as `tanh(x)` will always be `+/-1.0f` beyond
   // this point. This value is chosen as the first floating point number as of
@@ -332,11 +332,11 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u12(
   XNN_SIMD_CONST_F32(vone, 1.0f);
   XNN_SIMD_CONST_F32(vtwo, 2.0f);
 
-  for (; batch >= 12 * sizeof(float); batch -= 12 * sizeof(float)) {
+  for (; batch >= 96 * sizeof(float); batch -= 96 * sizeof(float)) {
     xnn_simd_f32_t vx_0 = xnn_loadu_f32(input);
     xnn_simd_f32_t vx_1 = xnn_loadu_f32(input + 1 * xnn_simd_size_f32);
     xnn_simd_f32_t vx_2 = xnn_loadu_f32(input + 2 * xnn_simd_size_f32);
-    input += 12;
+    input += 96;
 
     // Clamp the inputs to the interpolation range.
     vx_0 = xnn_min_f32(vmax_x, vx_0);
@@ -398,7 +398,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u12(
     xnn_storeu_f32(output, vy_0);
     xnn_storeu_f32(output + 1 * xnn_simd_size_f32, vy_1);
     xnn_storeu_f32(output + 2 * xnn_simd_size_f32, vy_2);
-    output += 12;
+    output += 96;
   }
   for (; batch >= xnn_simd_bytes_f32; batch -= xnn_simd_bytes_f32) {
     xnn_simd_f32_t vx = xnn_loadu_f32(input);
@@ -468,7 +468,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u12(
   }
 }
 
-void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u16(
+void xnn_f32_vtanh_ukernel__hvx_rational_9_8_nr_u128(
     size_t batch,
     const float* input,
     float* output,
@@ -478,7 +478,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u16(
   assert(batch % sizeof(float) == 0);
   assert(input != NULL);
   assert(output != NULL);
-  assert(xnn_simd_size_f32 == 4);
+  assert(xnn_simd_size_f32 == 32);
 
   // Cap the inputs to this value as `tanh(x)` will always be `+/-1.0f` beyond
   // this point. This value is chosen as the first floating point number as of
@@ -510,12 +510,12 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u16(
   XNN_SIMD_CONST_F32(vone, 1.0f);
   XNN_SIMD_CONST_F32(vtwo, 2.0f);
 
-  for (; batch >= 16 * sizeof(float); batch -= 16 * sizeof(float)) {
+  for (; batch >= 128 * sizeof(float); batch -= 128 * sizeof(float)) {
     xnn_simd_f32_t vx_0 = xnn_loadu_f32(input);
     xnn_simd_f32_t vx_1 = xnn_loadu_f32(input + 1 * xnn_simd_size_f32);
     xnn_simd_f32_t vx_2 = xnn_loadu_f32(input + 2 * xnn_simd_size_f32);
     xnn_simd_f32_t vx_3 = xnn_loadu_f32(input + 3 * xnn_simd_size_f32);
-    input += 16;
+    input += 128;
 
     // Clamp the inputs to the interpolation range.
     vx_0 = xnn_min_f32(vmax_x, vx_0);
@@ -593,7 +593,7 @@ void xnn_f32_vtanh_ukernel__neon_rational_9_8_nr_u16(
     xnn_storeu_f32(output + 1 * xnn_simd_size_f32, vy_1);
     xnn_storeu_f32(output + 2 * xnn_simd_size_f32, vy_2);
     xnn_storeu_f32(output + 3 * xnn_simd_size_f32, vy_3);
-    output += 16;
+    output += 128;
   }
   for (; batch >= xnn_simd_bytes_f32; batch -= xnn_simd_bytes_f32) {
     xnn_simd_f32_t vx = xnn_loadu_f32(input);
