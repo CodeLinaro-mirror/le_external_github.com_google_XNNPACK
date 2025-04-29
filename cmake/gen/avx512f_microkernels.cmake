@@ -50,7 +50,7 @@ SET(PROD_AVX512F_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsqrdiffc-avx512f-u32.c
   src/f32-vbinary/gen/f32-vsub-avx512f-u32.c
   src/f32-vbinary/gen/f32-vsubc-avx512f-u32.c
-  src/f32-vclamp/gen/f32-vclamp-avx512f-u16.c
+  src/f32-vclamp/gen/f32-vclamp-avx512f.c
   src/f32-vcmul/gen/f32-vcmul-avx512f-u32.c
   src/f32-vcopysign/gen/f32-vcopysign-avx512f.c
   src/f32-vcopysign/gen/f32-vcopysignc-avx512f.c
@@ -62,6 +62,7 @@ SET(PROD_AVX512F_MICROKERNEL_SRCS
   src/f32-vhswish/gen/f32-vhswish-avx512f.c
   src/f32-vlog/gen/f32-vlog-avx512f-rational-3-3-div.c
   src/f32-vlrelu/gen/f32-vlrelu-avx512f-u16.c
+  src/f32-vrelu/gen/f32-vrelu-avx512f.c
   src/f32-vrnd/gen/f32-vrndd-avx512f-u16.c
   src/f32-vrnd/gen/f32-vrndne-avx512f-u16.c
   src/f32-vrnd/gen/f32-vrndu-avx512f-u16.c
@@ -220,7 +221,6 @@ SET(NON_PROD_AVX512F_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsqrdiffc-avx512f-u16.c
   src/f32-vbinary/gen/f32-vsub-avx512f-u16.c
   src/f32-vbinary/gen/f32-vsubc-avx512f-u16.c
-  src/f32-vclamp/gen/f32-vclamp-avx512f-u32.c
   src/f32-vcmul/gen/f32-vcmul-avx512f-u16.c
   src/f32-vcmul/gen/f32-vcmul-avx512f-u64.c
   src/f32-vcmul/gen/f32-vcmul-avx512f-u128.c
@@ -236,8 +236,6 @@ SET(NON_PROD_AVX512F_MICROKERNEL_SRCS
   src/f32-vgelu/gen/f32-vgelu-avx512f-rational-12-10-div.c
   src/f32-vlog/gen/f32-vlog-avx512f-rational-3-3-nr.c
   src/f32-vlrelu/gen/f32-vlrelu-avx512f-u32.c
-  src/f32-vrelu/gen/f32-vrelu-avx512f-u16.c
-  src/f32-vrelu/gen/f32-vrelu-avx512f-u32.c
   src/f32-vrnd/gen/f32-vrndd-avx512f-u32.c
   src/f32-vrnd/gen/f32-vrndne-avx512f-u32.c
   src/f32-vrnd/gen/f32-vrndu-avx512f-u32.c

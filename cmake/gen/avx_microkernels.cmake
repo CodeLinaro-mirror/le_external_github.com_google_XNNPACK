@@ -57,7 +57,7 @@ SET(PROD_AVX_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsqrdiffc-avx-u16.c
   src/f32-vbinary/gen/f32-vsub-avx-u16.c
   src/f32-vbinary/gen/f32-vsubc-avx-u16.c
-  src/f32-vclamp/gen/f32-vclamp-avx-u16.c
+  src/f32-vclamp/gen/f32-vclamp-avx.c
   src/f32-vcopysign/gen/f32-vcopysign-avx.c
   src/f32-vcopysign/gen/f32-vcopysignc-avx.c
   src/f32-vcopysign/gen/f32-vrcopysignc-avx.c
@@ -67,6 +67,7 @@ SET(PROD_AVX_MICROKERNEL_SRCS
   src/f32-vgelu/gen/f32-vgelu-avx-rational-12-10-div.c
   src/f32-vhswish/gen/f32-vhswish-avx.c
   src/f32-vlrelu/gen/f32-vlrelu-avx-u16.c
+  src/f32-vrelu/gen/f32-vrelu-avx.c
   src/f32-vrnd/gen/f32-vrndd-avx-u16.c
   src/f32-vrnd/gen/f32-vrndne-avx-u16.c
   src/f32-vrnd/gen/f32-vrndu-avx-u16.c
@@ -219,7 +220,6 @@ SET(NON_PROD_AVX_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsqrdiffc-avx-u8.c
   src/f32-vbinary/gen/f32-vsub-avx-u8.c
   src/f32-vbinary/gen/f32-vsubc-avx-u8.c
-  src/f32-vclamp/gen/f32-vclamp-avx-u8.c
   src/f32-velu/gen/f32-velu-avx-rr2-lut4-p4-perm-u8.c
   src/f32-velu/gen/f32-velu-avx-rr2-lut4-p4-perm-u16.c
   src/f32-velu/gen/f32-velu-avx-rr2-lut4-p4-perm-u24.c
@@ -232,8 +232,6 @@ SET(NON_PROD_AVX_MICROKERNEL_SRCS
   src/f32-velu/gen/f32-velu-avx-rr2-p6-u24.c
   src/f32-velu/gen/f32-velu-avx-rr2-p6-u32.c
   src/f32-vlrelu/gen/f32-vlrelu-avx-u8.c
-  src/f32-vrelu/gen/f32-vrelu-avx-u8.c
-  src/f32-vrelu/gen/f32-vrelu-avx-u16.c
   src/f32-vrnd/gen/f32-vrndd-avx-u8.c
   src/f32-vrnd/gen/f32-vrndne-avx-u8.c
   src/f32-vrnd/gen/f32-vrndu-avx-u8.c

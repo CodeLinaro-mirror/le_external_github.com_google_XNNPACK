@@ -124,8 +124,7 @@ SET(PROD_WASMSIMD_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsqrdiffc-wasmsimd-u16.c
   src/f32-vbinary/gen/f32-vsub-wasmsimd-u16.c
   src/f32-vbinary/gen/f32-vsubc-wasmsimd-u16.c
-  src/f32-vclamp/gen/f32-vclamp-wasmsimd-arm-u8.c
-  src/f32-vclamp/gen/f32-vclamp-wasmsimd-x86-u8.c
+  src/f32-vclamp/gen/f32-vclamp-wasmsimd.c
   src/f32-vcmul/gen/f32-vcmul-wasmsimd-u8.c
   src/f32-vcopysign/gen/f32-vcopysign-wasmsimd.c
   src/f32-vcopysign/gen/f32-vcopysignc-wasmsimd.c
@@ -141,7 +140,7 @@ SET(PROD_WASMSIMD_MICROKERNEL_SRCS
   src/f32-vlrelu/gen/f32-vlrelu-wasmsimd-laneselect-u8.c
   src/f32-vmulcaddc/gen/f32-vmulcaddc-c4-minmax-wasmsimd-arm-2x.c
   src/f32-vmulcaddc/gen/f32-vmulcaddc-c4-minmax-wasmsimd-x86-2x.c
-  src/f32-vrelu/gen/f32-vrelu-wasmsimd-u16.c
+  src/f32-vrelu/gen/f32-vrelu-wasmsimd.c
   src/f32-vrnd/gen/f32-vrndd-wasmsimd-u8.c
   src/f32-vrnd/gen/f32-vrndne-wasmsimd-u8.c
   src/f32-vrnd/gen/f32-vrndu-wasmsimd-u8.c
@@ -731,8 +730,6 @@ SET(NON_PROD_WASMSIMD_MICROKERNEL_SRCS
   src/f32-vbinary/gen/f32-vsub-wasmsimd-u8.c
   src/f32-vbinary/gen/f32-vsubc-wasmsimd-u4.c
   src/f32-vbinary/gen/f32-vsubc-wasmsimd-u8.c
-  src/f32-vclamp/gen/f32-vclamp-wasmsimd-arm-u4.c
-  src/f32-vclamp/gen/f32-vclamp-wasmsimd-x86-u4.c
   src/f32-vcmul/gen/f32-vcmul-wasmsimd-u4.c
   src/f32-vcmul/gen/f32-vcmul-wasmsimd-u12.c
   src/f32-vcmul/gen/f32-vcmul-wasmsimd-u16.c
@@ -754,8 +751,6 @@ SET(NON_PROD_WASMSIMD_MICROKERNEL_SRCS
   src/f32-vlrelu/gen/f32-vlrelu-wasmsimd-laneselect-u4.c
   src/f32-vmulcaddc/gen/f32-vmulcaddc-c8-minmax-wasmsimd-arm-2x.c
   src/f32-vmulcaddc/gen/f32-vmulcaddc-c8-minmax-wasmsimd-x86-2x.c
-  src/f32-vrelu/gen/f32-vrelu-wasmsimd-u4.c
-  src/f32-vrelu/gen/f32-vrelu-wasmsimd-u8.c
   src/f32-vrnd/gen/f32-vrndd-wasmsimd-u4.c
   src/f32-vrnd/gen/f32-vrndne-wasmsimd-u4.c
   src/f32-vrnd/gen/f32-vrndu-wasmsimd-u4.c
