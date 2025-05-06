@@ -159,6 +159,38 @@ static XNN_INLINE xnn_simd_f32_t xnn_trunc_f32(xnn_simd_f32_t a) {
 }
 #endif  // __HVX_ARCH__ >= 73
 
+#if __HVX_ARCH__ >= 73
+static XNN_INLINE xnn_simd_f32_t xnn_ceil_f32(xnn_simd_f32_t a) {
+  const HVX_Vector vmax_non_int_val =
+      Q6_V_vsplat_R(float_as_uint32(8388608.0f));  // 2^23.
+
+  const HVX_VectorPred vfilter = Q6_Q_vcmp_gt_VsfVsf(
+      Q6_V_vand_VV(a, Q6_V_vsplat_R(0x7FFFFFFF)), vmax_non_int_val);
+
+  // Create a vector of `1.0f` with the same sign as the entries of `a`.
+  const HVX_Vector vone = Q6_V_vsplat_R(float_as_uint32(1.0f));
+  const HVX_Vector vsign_mask = Q6_V_vsplat_R(0x80000000);
+  const HVX_Vector vsigned_one = Q6_V_vor_VV(Q6_V_vand_VV(a, vsign_mask), vone);
+
+  const HVX_Vector vtrunc = Q6_Vsf_equals_Vw(Q6_Vw_equals_Vsf(a));
+  const HVX_VectorPred vfilterint = Q6_Q_vcmp_eq_VwVw(vtrunc, a);
+  const HVX_Vector vsigned_one_zero = Q6_V_vmux_QVV(vfilterint, Q6_V_vzero(), vsigned_one);
+  const HVX_Vector vresult = Q6_Vsf_equals_Vqf32(Q6_Vqf32_vadd_VsfVsf(vtrunc, vsigned_one_zero));
+
+  return Q6_V_vmux_QVV(vfilter, a, vresult);
+}
+#else
+static XNN_INLINE xnn_simd_f32_t xnn_ceil_f32(xnn_simd_f32_t a) {
+  XNN_ALIGN(128) float input[xnn_simd_size_f32];
+  XNN_ALIGN(128) float output[xnn_simd_size_f32];
+  *((HVX_Vector*)input) = a;
+  for (size_t k = 0; k < xnn_simd_size_f32; ++k) {
+    output[k] = ceilf(input[k]);
+  }
+  return *((HVX_Vector*)output);
+}
+#endif  // __HVX_ARCH__ >= 73
+
 // Logical operations.
 
 static XNN_INLINE xnn_simd_f32_t xnn_and_f32(xnn_simd_f32_t a,
