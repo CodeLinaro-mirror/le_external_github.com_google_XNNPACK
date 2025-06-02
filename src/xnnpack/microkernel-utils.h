@@ -6,9 +6,8 @@
 #ifndef THIRD_PARTY_XNNPACK_SRC_XNNPACK_MICROKERNEL_UTILS_H_
 #define THIRD_PARTY_XNNPACK_SRC_XNNPACK_MICROKERNEL_UTILS_H_
 
+#include <stdbool.h>
 #include <stddef.h>
-
-#include "src/xnnpack/common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +25,12 @@ size_t xnn_gemm_best_tile_size(size_t num_groups, size_t m, size_t n,
                                size_t cm_stride, size_t cn_stride, size_t mr,
                                size_t nr, size_t num_threads);
 
+// Checks wheter it is worthwhile to inline the lhs packing for a GEMM with the
+// given parameters.
+bool xnn_packed_lhs_stays_in_cache(size_t mr, size_t nr, size_t m_stride,
+                                   size_t m_packed_stride, size_t n_stride,
+                                   size_t cm_stride, size_t cn_stride,
+                                   size_t nc);
 #ifdef __cplusplus
 }
 #endif
