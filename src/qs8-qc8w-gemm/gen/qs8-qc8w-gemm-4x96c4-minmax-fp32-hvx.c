@@ -130,6 +130,9 @@ void xnn_qs8_qc8w_gemm_minmax_fp32_ukernel_4x96c4__hvx(
     HVX_Vector vacc3x1 = vacc0x1;
     HVX_Vector vacc3x2 = vacc0x2;
 
+    const uint32_t info = HEXAGON_V64_CREATE_H(0, 0, kc * 96, 1);
+    Q6_l2fetch_AR((void*) w, info);
+
     size_t k = kc;
     if (((((intptr_t) a) | a_stride) & (sizeof(int32_t) - 1)) != 0) {
       for (; k >= 4 * sizeof(int8_t); k -= 4 * sizeof(int8_t)) {
