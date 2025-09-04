@@ -290,7 +290,8 @@ class ReduceOperatorTester {
       const int32_t num_reduced_elements =
           num_input_elements() / num_output_elements;
       const float reduce_scale =
-          operation() == xnn_reduce_mean
+          (operation() == xnn_reduce_mean ||
+           operation() == xnn_reduce_mean_squared)
               ? static_cast<double>(1.0f) / num_reduced_elements
               : 1;
       const QuantizationConfig q = Config::GenerateQuantization(rng, dist);
@@ -317,6 +318,7 @@ class ReduceOperatorTester {
                           static_cast<typename Config::AccumulatorType>(
                               input[input_idx]);
                       break;
+                    case xnn_reduce_mean_squared:
                     case xnn_reduce_sum_squared: {
                       typename Config::AccumulatorType x = input[input_idx];
                       accumulator[output_idx] += x * x;
@@ -490,6 +492,9 @@ struct TestParam {
       case xnn_reduce_mean:
         sstr << "mean";
         break;
+      case xnn_reduce_mean_squared:
+        sstr << "mean_squared";
+        break;
       case xnn_reduce_min:
         sstr << "min";
         break;
@@ -509,12 +514,24 @@ struct TestParam {
       sstr << "_reduce_all";
     } else {
       sstr << "_axes";
-      sstr << ((param.reduction_axes & (uint32_t(1) << 0)) != 0 ? "_1" : "");
-      sstr << ((param.reduction_axes & (uint32_t(1) << 1)) != 0 ? "_2" : "");
-      sstr << ((param.reduction_axes & (uint32_t(1) << 2)) != 0 ? "_3" : "");
-      sstr << ((param.reduction_axes & (uint32_t(1) << 3)) != 0 ? "_4" : "");
-      sstr << ((param.reduction_axes & (uint32_t(1) << 4)) != 0 ? "_5" : "");
-      sstr << ((param.reduction_axes & (uint32_t(1) << 5)) != 0 ? "_6" : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 0)) != 0
+                   ? "_1"
+                   : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 1)) != 0
+                   ? "_2"
+                   : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 2)) != 0
+                   ? "_3"
+                   : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 3)) != 0
+                   ? "_4"
+                   : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 4)) != 0
+                   ? "_5"
+                   : "");
+      sstr << ((param.reduction_axes & (static_cast<uint32_t>(1) << 5)) != 0
+                   ? "_6"
+                   : "");
     }
     if (param.use_neg_axes) {
       sstr << "_neg_axes";
@@ -535,12 +552,12 @@ class ReduceNDTest : public testing::TestWithParam<TestParam> {
 
   std::vector<int64_t> GetReductionAxes(const TestParam& param) {
     const bool reduce_dims[6] = {
-        (param.reduction_axes & (uint32_t(1) << 0)) != 0,
-        (param.reduction_axes & (uint32_t(1) << 1)) != 0,
-        (param.reduction_axes & (uint32_t(1) << 2)) != 0,
-        (param.reduction_axes & (uint32_t(1) << 3)) != 0,
-        (param.reduction_axes & (uint32_t(1) << 4)) != 0,
-        (param.reduction_axes & (uint32_t(1) << 5)) != 0};
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 0)) != 0,
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 1)) != 0,
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 2)) != 0,
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 3)) != 0,
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 4)) != 0,
+        (param.reduction_axes & (static_cast<uint32_t>(1) << 5)) != 0};
 
     std::vector<int64_t> reduction_axes;
     for (int i = 0; i < param.dims; ++i) {
@@ -596,11 +613,16 @@ TEST_P(ReduceNDTest, reduce) {
 std::vector<TestParam> GenerateTests() {
   std::vector<TestParam> params;
   for (enum xnn_reduce_operator operation :
-       {xnn_reduce_sum, xnn_reduce_sum_squared, xnn_reduce_mean, xnn_reduce_max,
-        xnn_reduce_min}) {
+       {xnn_reduce_sum, xnn_reduce_sum_squared, xnn_reduce_mean,
+        xnn_reduce_mean_squared, xnn_reduce_max, xnn_reduce_min}) {
     for (enum xnn_datatype datatype :
          {xnn_datatype_fp16, xnn_datatype_fp32, xnn_datatype_qint8,
           xnn_datatype_quint8}) {
+      if ((datatype == xnn_datatype_qint8 || datatype == xnn_datatype_quint8) &&
+          (operation == xnn_reduce_sum_squared ||
+           operation == xnn_reduce_mean_squared)) {
+        continue;
+      }
       for (int dims = 1; dims <= 6; ++dims) {
         for (int reduction_axes = 1; reduction_axes < (1 << dims);
              ++reduction_axes) {
