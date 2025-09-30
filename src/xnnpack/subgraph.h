@@ -55,6 +55,7 @@
 
 /// Do not attempt to elide subgraph nodes with this flag set.
 #define XNN_NODE_FLAG_DONT_ELIDE 0x00800000
+#define XNN_NODE_FLAG_REQUIRES_ROW_SUM 0x01000000
 
 #ifdef __cplusplus
 extern "C" {
@@ -98,6 +99,8 @@ struct xnn_value_quantization {
       /// Per-channel multiplication factor to convert quantized elements to
       /// real representation.
       const float* channelwise_scale;
+      /// Per-channel offset from zero of the quantized elements.
+      const float* channelwise_zero_point;
       /// Index of the channel dimension with per-channel quantization
       /// parameters.
       size_t channel_dimension;
@@ -122,6 +125,8 @@ struct xnn_value_quantization {
       /// Per-batch quantization parameters factor to convert quantized
       /// elements to real representation.
       struct xnn_quantization_params* dynamic_params;
+      /// Per-batch sum of the quantized input.
+      float* row_sum;
       /// Number of (struct xnn_quantization_params) * sizeof(struct
       /// xnn_quantization_params)
       size_t dynamic_params_size;
@@ -211,7 +216,7 @@ struct xnn_runtime_value {
   struct xnn_shape shape;
   /// Size of tensor.
   size_t size;
-  /// Per-value quantization parameters. 40 bytes.
+  /// Per-value quantization parameters. 52 bytes.
   struct xnn_value_quantization quantization;
   /// Unique ID for the value.
   uint32_t id;
@@ -619,10 +624,10 @@ XNN_INLINE static size_t xnn_tensor_get_rounded_dynamic_quant_param_size(
   assert(value->datatype == xnn_datatype_qdint8 ||
          value->datatype == xnn_datatype_qduint8);
 
-  // We may read out of bounds for qparams.
-  return xnn_get_rounded_size(value->quantization.dynamic_params_size +
-                              XNN_EXTRA_QUANTIZATION_PARAMS *
-                                  sizeof(struct xnn_quantization_params));
+  // We may read out of bounds for qparams. We need one extra float for row_sum.
+  return xnn_get_rounded_size(
+      value->quantization.dynamic_params_size + XNN_EXTRA_QUANTIZATION_PARAMS *
+          (sizeof(struct xnn_quantization_params) + sizeof(float)));
 }
 
 // Rewrites the subgraph such that values have exactly one producer.

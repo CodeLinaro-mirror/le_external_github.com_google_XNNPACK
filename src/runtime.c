@@ -273,7 +273,9 @@ static enum xnn_status initialize_workspace_values(
         value->quantization.dynamic_params =
           (void*) ((uintptr_t) runtime->workspace->data + mem_alloc_tracker->usage[i].alloc_offset
                    + xnn_tensor_get_rounded_size(value));
-
+        value->quantization.row_sum =
+          (void*) ((uintptr_t) runtime->workspace->data + mem_alloc_tracker->usage[i].alloc_offset
+                   + xnn_tensor_get_rounded_size(value) + value->quantization.dynamic_params_size);
       }
     }
   }
@@ -312,6 +314,8 @@ static enum xnn_status initialize_workspace_values(
                 value->datatype == xnn_datatype_qduint8) {
               value->quantization.dynamic_params = (void*) ((uintptr_t) value->quantization.dynamic_params
                                                             + workspace_data_delta);
+              value->quantization.row_sum = (void*) ((uintptr_t) value->quantization.row_sum
+                                                      + workspace_data_delta);
             }
           }
         }

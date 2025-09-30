@@ -864,7 +864,18 @@ enum xnn_status xnn_create_convert_nc_f16_qdu8(
 enum xnn_status xnn_create_convert_nc_f32_qd8(
   uint32_t flags,
   xnn_operator_t* convert_op_out) {
-  return create_convert_nc_f32_qx8(flags, xnn_init_f32_to_qs8_cvt_config(), xnn_operator_type_convert_nc_f32_qd8, convert_op_out);
+  enum xnn_status status = create_convert_nc_f32_qx8(flags, xnn_init_f32_to_qs8_cvt_config(), xnn_operator_type_convert_nc_f32_qd8, convert_op_out);
+  if (status == xnn_status_success && (*convert_op_out)->flags & XNN_NODE_FLAG_REQUIRES_ROW_SUM) {
+    const struct xnn_reduce_config* rsum_config = xnn_init_qs8_rsum_config();
+    if (rsum_config == NULL) {
+      xnn_log_error(
+          "failed to create %s operator: unsupported hardware configuration",
+          xnn_operator_type_to_string(xnn_operator_type_convert_nc_f32_qd8));
+      return xnn_status_unsupported_hardware;
+    }
+    (*convert_op_out)->reduce_config2 = rsum_config;
+  }
+  return status;
 }
 
 enum xnn_status xnn_create_convert_nc_f32_qdu8(
@@ -1024,6 +1035,11 @@ enum xnn_status reshape_convert_nc_f32_qx8(
     .convert_ukernel = convert_op->unary_elementwise_config->ukernel,
     .init_params = convert_op->unary_elementwise_config->init,
   };
+
+  if (convert_op->flags & XNN_NODE_FLAG_REQUIRES_ROW_SUM) {
+    convert_op->context.f32_qd8_convert.rsum_ukernel = convert_op->reduce_config2->ukernel;
+  }
+
   memcpy(&convert_op->context.f32_qd8_convert.params, &convert_op->params.f32_default, sizeof(convert_op->params.f32_default));
 
   convert_op->compute[0].type = xnn_parallelization_type_1d_tile_1d_dynamic;
@@ -1254,7 +1270,8 @@ enum xnn_status setup_convert_nc_f32_qx8(
   const float* input,
   void* output,
   enum xnn_operator_type expected_operator_type,
-  struct xnn_quantization_params* quantization_params)
+  void* row_sum,
+  void* quantization_params)
 {
   if (convert_op->type != expected_operator_type) {
     xnn_log_error(
@@ -1282,7 +1299,9 @@ enum xnn_status setup_convert_nc_f32_qx8(
 
   convert_op->context.f32_qd8_convert.x = input;
   convert_op->context.f32_qd8_convert.y = output;
-  convert_op->context.f32_qd8_convert.quantization_params = (struct xnn_qd8_quantization_params*) quantization_params;
+  convert_op->context.f32_qd8_convert.quantization_params =
+      (struct xnn_qd8_quantization_params*) quantization_params;
+  convert_op->context.f32_qd8_convert.row_sum = row_sum;
 
   convert_op->state = xnn_run_state_ready;
 
@@ -1311,9 +1330,10 @@ enum xnn_status xnn_setup_convert_nc_f32_qd8(
   xnn_operator_t convert_op,
   const float* input,
   int8_t* output,
+  float* row_sum,
   struct xnn_quantization_params* quantization_params)
 {
-  return setup_convert_nc_f32_qx8(convert_op, input, output, xnn_operator_type_convert_nc_f32_qd8, quantization_params);
+  return setup_convert_nc_f32_qx8(convert_op, input, output, xnn_operator_type_convert_nc_f32_qd8, row_sum, quantization_params);
 }
 
 enum xnn_status xnn_setup_convert_nc_f32_qdu8(
@@ -1322,7 +1342,7 @@ enum xnn_status xnn_setup_convert_nc_f32_qdu8(
   uint8_t* output,
   struct xnn_quantization_params* quantization_params)
 {
-  return setup_convert_nc_f32_qx8(convert_op, input, output, xnn_operator_type_convert_nc_f32_qdu8, quantization_params);
+  return setup_convert_nc_f32_qx8(convert_op, input, output, xnn_operator_type_convert_nc_f32_qdu8, /*row_sum=*/NULL, quantization_params);
 }
 
 enum xnn_status xnn_setup_convert_nc_f32_qp8(xnn_operator_t convert_op,
