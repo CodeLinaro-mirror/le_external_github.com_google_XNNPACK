@@ -5702,7 +5702,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f16_qc4w_gemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f16_qc4w_gemm);
-  return &qdu8_f16_qc4w_gemm_config;
+  return qdu8_f16_qc4w_gemm_config.arch ? &qdu8_f16_qc4w_gemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qd8_f16_qb4w_gemm_config() {
@@ -5727,7 +5727,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f32_qc4w_gemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f32_qc4w_gemm);
-  return &qdu8_f32_qc4w_gemm_config;
+  return qdu8_f32_qc4w_gemm_config.arch ? &qdu8_f32_qc4w_gemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qd8_f32_qb4w_gemm_config() {
@@ -5743,7 +5743,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f32_qb4w_gemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f32_qb4w_gemm);
-  return &qdu8_f32_qb4w_gemm_config;
+  return qdu8_f32_qb4w_gemm_config.arch ? &qdu8_f32_qb4w_gemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qdu8_f16_qc8w_gemm_config() {
@@ -5751,7 +5751,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f16_qc8w_gemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f16_qc8w_gemm);
-  return &qdu8_f16_qc8w_gemm_config;
+  return qdu8_f16_qc8w_gemm_config.arch ? &qdu8_f16_qc8w_gemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qdu8_f32_qc8w_igemm_config() {
@@ -5759,7 +5759,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f32_qc8w_igemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f32_qc8w_igemm);
-  return &qdu8_f32_qc8w_igemm_config;
+  return qdu8_f32_qc8w_igemm_config.arch ? &qdu8_f32_qc8w_igemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qdu8_f32_qc8w_gemm_config() {
@@ -5767,7 +5767,7 @@ const struct xnn_gemm_config* xnn_init_qdu8_f32_qc8w_gemm_config() {
     return NULL;
   }
   XNN_INIT_ONCE(qdu8_f32_qc8w_gemm);
-  return &qdu8_f32_qc8w_gemm_config;
+  return qdu8_f32_qc8w_gemm_config.arch ? &qdu8_f32_qc8w_gemm_config : NULL;
 }
 
 const struct xnn_gemm_config* xnn_init_qd8_f32_qc8w_gemm_config() {
