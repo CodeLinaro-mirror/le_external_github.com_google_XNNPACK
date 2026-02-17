@@ -33,6 +33,7 @@ package(default_visibility = ["//ynnpack:__subpackages__"])
         "//ynnpack/base/simd",  # buildcleaner:keep
         "//ynnpack/base/test:fuzz_test",
         "//ynnpack/base/test:random",
+        "@slinky//slinky/base",
     ] + ynn_test_deps(),
 ) for arch in [
     "arm_neon",
@@ -65,5 +66,6 @@ cc_test(
         "//ynnpack/base/simd",  # buildcleaner:keep
         "//ynnpack/base/test:fuzz_test",
         "//ynnpack/base/test:random",
+        "@slinky//slinky/base",
     ] + ynn_test_deps(),
 )

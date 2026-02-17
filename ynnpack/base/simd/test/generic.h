@@ -13,7 +13,6 @@
 #include <cstring>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,6 +21,7 @@
 #include "ynnpack/base/simd/vec.h"
 #include "ynnpack/base/test/fuzz_test.h"
 #include "ynnpack/base/test/random.h"
+#include "slinky/base/span.h"
 
 namespace ynn {
 
@@ -31,12 +31,12 @@ using testing::Each;
 using testing::ElementsAreArray;
 
 template <typename T>
-std::vector<T> as_vector(T* array, size_t size) {
-  return std::vector<T>(array, array + size);
+slinky::span<T> as_span(T* array, size_t size) {
+  return slinky::span<T>(array, array + size);
 }
 template <typename T>
-std::vector<T> as_vector(T* begin, T* end) {
-  return std::vector<T>(begin, end);
+slinky::span<T> as_span(T* begin, T* end) {
+  return slinky::span<T>(begin, end);
 }
 
 using u8 = uint8_t;
@@ -73,7 +73,7 @@ void test_load_store() {
     auto v = load(src, std::integral_constant<size_t, N>{});
 
     store(dst, v);
-    EXPECT_THAT(as_vector(dst, N), ElementsAreArray(src, N));
+    EXPECT_THAT(as_span(dst, N), ElementsAreArray(src, N));
   }
 }
 
@@ -119,8 +119,8 @@ void test_partial_load() {
 
       scalar dst[N];
       store(dst, v);
-      EXPECT_THAT(as_vector(dst, n), ElementsAreArray(src, n));
-      EXPECT_THAT(as_vector(dst + n, dst + N),
+      EXPECT_THAT(as_span(dst, n), ElementsAreArray(src, n));
+      EXPECT_THAT(as_span(dst + n, dst + N),
                   ElementsAreArray(init + n, init + N));
     }
   }
@@ -141,8 +141,8 @@ void test_partial_load_zero() {
 
       scalar dst[N];
       store(dst, v);
-      EXPECT_THAT(as_vector(dst, n), ElementsAreArray(src, n));
-      EXPECT_THAT(as_vector(dst + n, dst + N),
+      EXPECT_THAT(as_span(dst, n), ElementsAreArray(src, n));
+      EXPECT_THAT(as_span(dst + n, dst + N),
                   ElementsAreArray(dst + n, dst + N));
     }
   }
@@ -163,7 +163,7 @@ void test_partial_load_undef() {
 
       scalar dst[N];
       store(dst, v);
-      EXPECT_THAT(as_vector(dst, n), ElementsAreArray(src, n));
+      EXPECT_THAT(as_span(dst, n), ElementsAreArray(src, n));
     }
   }
 }
@@ -185,7 +185,7 @@ void test_partial_store() {
     vector v = load(src, vector::N);
     for (size_t n = 1; n < N; ++n) {
       store(dst, v, n);
-      EXPECT_THAT(as_vector(dst, n), ElementsAreArray(src, n));
+      EXPECT_THAT(as_span(dst, n), ElementsAreArray(src, n));
       for (size_t i = n; i < N; ++i) {
         ASSERT_EQ(dst[i], static_cast<scalar>(i + 5));
       }

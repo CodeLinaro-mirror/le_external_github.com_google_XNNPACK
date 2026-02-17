@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include "ynnpack/include/ynnpack.h"
 #include "ynnpack/subgraph/subgraph.h"
+#include "slinky/base/span.h"
 
 namespace ynn {
 
@@ -267,7 +268,7 @@ inline const ynn_node& ProducerOf(uint32_t value_id,
 //   EXPECT_THAT(ValuesIn<float>(subgraph.value(x_id)),
 //               testing::ElementsAre(1.0f, 2.0f, 3.0f));
 template <typename T>
-std::vector<T> ValuesIn(const ynn_value& value) {
+slinky::span<const T> ValuesIn(const ynn_value& value) {
   if (!value.is_static()) {
     return {};
   }
@@ -275,8 +276,7 @@ std::vector<T> ValuesIn(const ynn_value& value) {
   if (count == 0) {
     return {};
   }
-  return std::vector<T>(static_cast<const T*>(value.data->base),
-                        static_cast<const T*>(value.data->base) + count);
+  return slinky::span<const T>(static_cast<const T*>(value.data->base), count);
 }
 
 }  // namespace ynn
