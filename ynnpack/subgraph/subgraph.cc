@@ -903,7 +903,7 @@ void ynn_subgraph::dump(std::ostream& os) const {
     if (value.is_static()) {
       os << "static ";
       if (std::optional<float> v = value.as_scalar_float()) {
-        os << "value=" << *v;
+        os << "value=" << *v << " ";
       }
     }
     os << "extents={";

@@ -20,3 +20,7 @@
 #ifdef YNN_ARCH_ARM_NEON
 #include "ynnpack/kernels/ternary/arm_neon.inc"
 #endif  // YNN_ARCH_ARM_NEON
+
+YNN_ELEMENTWISE_KERNEL(arch_flag::none, quantize_fp32_to_int8, quantize_int8, nullptr, float, float, int32_t, int8_t)
+YNN_ELEMENTWISE_KERNEL(arch_flag::none, quantize_fp32_to_uint8, quantize_uint8, nullptr, float, float, int32_t, uint8_t)
+

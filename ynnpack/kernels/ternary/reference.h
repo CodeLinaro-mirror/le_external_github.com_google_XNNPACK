@@ -15,7 +15,6 @@
 
 #include <gtest/gtest.h>
 #include "ynnpack/base/arithmetic.h"
-#include "ynnpack/base/base.h"
 #include "ynnpack/base/test/tensor.h"
 #include "ynnpack/base/type.h"
 #include "ynnpack/include/ynnpack.h"

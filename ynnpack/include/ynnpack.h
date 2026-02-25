@@ -160,7 +160,7 @@ enum ynn_status ynn_define_unary(ynn_subgraph_t subgraph,
 
 // A helper for `ynn_define_unary` with `op` = `ynn_unary_convert`, which is
 // capable of defining the output value.
-enum ynn_status ynn_define_convert(ynn_subgraph_t subgraph, uint32_t input_id,
+enum ynn_status ynn_define_convert(ynn_subgraph_t subgraph, uint32_t input_a_id,
                                    enum ynn_type type, uint32_t zero_point_id,
                                    uint32_t scale_id, uint32_t* output_id,
                                    uint32_t flags);

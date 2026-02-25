@@ -164,46 +164,6 @@ bool rewrite_convert_to_multiply(ynn_subgraph& subgraph, ynn_node& node,
   return false;
 }
 
-// Rewrite x = convert(a) where a is an int32 with a scale and no zero point to
-// a binary (or ternary, if the scale is itself a multiply) multiply.
-bool rewrite_convert_to_quantize(ynn_subgraph& subgraph, ynn_node& node,
-                                 subgraph_analysis& analysis) {
-  const ynn_node::unary_elementwise* unary =
-      std::get_if<ynn_node::unary_elementwise>(&node.op);
-  if (unary == nullptr || unary->op != ynn_unary_convert) {
-    return false;
-  }
-
-  // The input should be a float.
-  const ynn_value& input = subgraph.value(node.inputs[0]);
-  if (ynn::type_is_integral(input.type)) {
-    return false;
-  }
-
-  const ynn_value& output = subgraph.value(node.outputs[0]);
-  if (output.type != ynn_type_int8 && output.type != ynn_type_uint8) {
-    return false;
-  }
-  if (output.scale_id == YNN_INVALID_VALUE_ID ||
-      output.zero_point_id == YNN_INVALID_VALUE_ID) {
-    return false;
-  }
-
-  const ynn::ternary_op op = output.type == ynn_type_int8
-                                 ? ynn::ternary_op::quantize_int8
-                                 : ynn::ternary_op::quantize_uint8;
-  ynn::ternary_kernel_fn kernel = ynn::get_ternary_kernel(
-      op, input.type, subgraph.value(output.scale_id).type,
-      subgraph.value(output.zero_point_id).type, output.type);
-  if (kernel != nullptr) {
-    YNN_LOG_DEBUG() << "Rewriting convert to quantize";
-    ynn::define_ternary(subgraph, node, node.inputs[0], output.scale_id,
-                        output.zero_point_id, node.outputs[0], op, kernel);
-    return true;
-  }
-  return false;
-}
-
 // Rewrite min(max(a, b), c) to clamp(a, b, c)
 bool rewrite_clamp(ynn_subgraph& subgraph, ynn_node& node,
                    subgraph_analysis& analysis) {
@@ -600,7 +560,6 @@ ynn_status ynn_subgraph::fusion() {
           ynn::rewrite_subtract_multiply(*this, node, analysis) ||
           ynn::rewrite_convert_to_multiply(*this, node, analysis) ||
           ynn::rewrite_clamp(*this, node, analysis) ||
-          ynn::rewrite_convert_to_quantize(*this, node, analysis) ||
           ynn::remove_broadcast(*this, node, analysis) ||
           ynn::rewrite_transpose_stencil_copy(*this, node, analysis) ||
           ynn::rewrite_reduce_sum_of_squared(*this, node, analysis) ||
