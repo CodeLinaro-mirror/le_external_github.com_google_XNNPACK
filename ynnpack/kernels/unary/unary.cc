@@ -210,9 +210,18 @@ struct exp_op {
 };
 
 struct expm1_op {
-  explicit expm1_op(const unary_params& = {}) {}
-  float operator()(float x) const { return std::expm1(x); }
-  double operator()(double x) const { return std::expm1(x); }
+  exp_params params;
+
+  explicit expm1_op(const unary_params& params) : params(params.expm1) {
+    this->params.input_multiplier *= std::log2(std::exp(1.0));
+  }
+  float operator()(float x) const {
+    return std::expm1(static_cast<float>(params.input_multiplier) * x) *
+           static_cast<float>(params.output_multiplier);
+  }
+  double operator()(double x) const {
+    return std::expm1(params.input_multiplier * x) * params.output_multiplier;
+  }
 };
 
 struct erf_op {
