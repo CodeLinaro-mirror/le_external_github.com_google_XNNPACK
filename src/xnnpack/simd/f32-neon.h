@@ -307,4 +307,45 @@ static XNN_INLINE void xnn_store_tail_f32(float* output, xnn_simd_f32_t v,
   }
 }
 
+#if (defined(__ARM_FP16_FORMAT_IEEE) || defined(__ARM_FP16_FORMAT_ALTERNATIVE)) && (defined(__ARM_FP) && (__ARM_FP & 2))
+#include "src/xnnpack/math.h"
+
+typedef float16x4_t xnn_simd_f16_t;
+
+static XNN_INLINE xnn_simd_f16_t xnn_loadu_f16(const xnn_float16* ptr) {
+  return vld1_f16((const __fp16*)ptr);
+}
+
+static XNN_INLINE void xnn_storeu_f16(xnn_float16* ptr, xnn_simd_f16_t v) {
+  vst1_f16((__fp16*)ptr, v);
+}
+
+static XNN_INLINE xnn_simd_f32_t xnn_cvt_f32_f16(xnn_simd_f16_t a) {
+  return vcvt_f32_f16(a);
+}
+
+static XNN_INLINE xnn_simd_f16_t xnn_cvt_f16_f32(xnn_simd_f32_t a) {
+  return vcvt_f16_f32(a);
+}
+
+static XNN_INLINE xnn_simd_f16_t xnn_load_tail_f16(const xnn_float16* input,
+                                                   size_t num_elements) {
+  XNN_ALIGN(8) xnn_float16 padded[4] = {0};
+  memcpy(padded, input, num_elements * sizeof(xnn_float16));
+  return vld1_f16((const __fp16*)padded);
+}
+
+static XNN_INLINE void xnn_store_tail_f16(xnn_float16* output, xnn_simd_f16_t v,
+                                          size_t num_elements) {
+  if (num_elements == 4) {
+    vst1_f16((__fp16*)output, v);
+  } else {
+    XNN_ALIGN(8) xnn_float16 padded[4];
+    vst1_f16((__fp16*)padded, v);
+    memcpy(output, padded, num_elements * sizeof(xnn_float16));
+  }
+}
+#endif  // defined(__ARM_FP16_FORMAT_IEEE) ||
+        // defined(__ARM_FP16_FORMAT_ALTERNATIVE)
+
 #endif  // XNNPACK_SRC_XNNPACK_SIMD_F32_NEON_H_
