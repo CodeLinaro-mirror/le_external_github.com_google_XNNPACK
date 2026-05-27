@@ -17,7 +17,9 @@ xnnpack_cxx_library(
         "//:internal",
         "//:logging",
         "//:node_type",
+        "//:operator_h",
         "//:subgraph_h",
         "//:xnnpack_h",
+        "//src/configs:config_hdrs",
     ],
 )
