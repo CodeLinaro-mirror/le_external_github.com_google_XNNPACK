@@ -282,6 +282,7 @@ cc_library(
     visibility = ["//ynnpack:__subpackages__"],
     deps = [
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/kernels/transpose",
     ],
 )
@@ -422,12 +423,14 @@ ynn_cc_library(
             "wasm_simd128_fp64.cc",
             "wasm_simd128_int8_int8_int32.cc",
         ],
+        "hexagon_hvx": ["hexagon_hvx.cc"],
     },
     visibility = ["//ynnpack:__subpackages__"],
     deps = [
         "//ynnpack:ynnpack_h",
         "//ynnpack/base",
         "//ynnpack/base:log",
+        "//ynnpack/base/simd",
     ] + select({
         "//ynnpack:arm64": [":arm64_sme_stubs"],
         "//conditions:default": [],
@@ -441,6 +444,7 @@ cc_library(
     deps = [
         ":pack",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/base/test:buffer",
         "//ynnpack/base/test:tensor",
     ],
@@ -457,6 +461,7 @@ cc_test(
         ":pack_test_tensor",
         "//ynnpack:ynnpack_h",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/base/test:buffer",
         "//ynnpack/base/test:fuzz_test",
         "//ynnpack/base/test:random",
@@ -474,6 +479,7 @@ cc_test(
         ":dot",
         ":pack_test_tensor",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/base/test:buffer",
         "//ynnpack/base/test:fuzz_test",
         "//ynnpack/base/test:random",
@@ -490,6 +496,7 @@ cc_test(
     deps = [
         ":schedule",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
     ] + ynn_test_deps(),
 )
 
@@ -501,6 +508,7 @@ cc_test(
     deps = [
         ":pack",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
     ] + ynn_test_deps(),
 )
 
@@ -513,6 +521,7 @@ cc_test(
         ":dot",
         "//ynnpack:ynnpack_h",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
     ] + ynn_test_deps(),
 )
 
@@ -525,6 +534,7 @@ cc_test(
     deps = [
         ":dot",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/base/test:buffer",
         "//ynnpack/base/test:tensor",
         "@com_google_benchmark//:benchmark",
@@ -542,6 +552,7 @@ cc_binary(
         ":pack_test_tensor",
         ":schedule",
         "//ynnpack/base",
+        "//ynnpack/base/simd",
         "//ynnpack/base/test:buffer",
         "//ynnpack/base/test:tensor",
         "//ynnpack/base/test:util",

@@ -149,6 +149,29 @@ YNN_DOT_KERNEL(arch_flag::sme, dot_int8_int8_int32_sme,
 #include "ynnpack/kernels/dot/wasm_simd128_int8_int8_int32.inc"
 #endif  // YNN_ARCH_WASM_SIMD128
 
+#ifdef YNN_ARCH_HEXAGON_HVX
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_1x32x1_1x32x1_hvx,
+               1, 32, 1, 1, 32, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_1x64x1_1x32x1_hvx,
+               1, 64, 1, 1, 64, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_1x128x1_1x32x1_hvx,
+               1, 128, 1, 1, 128, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_2x64x1_1x32x1_hvx,
+               2, 64, 1, 1, 64, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_4x32x1_1x32x1_hvx,
+               4, 32, 1, 1, 32, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_4x64x1_1x32x1_hvx,
+               4, 64, 1, 1, 64, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_4x128x1_1x32x1_hvx,
+               4, 128, 1, 1, 128, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_6x64x1_1x32x1_hvx,
+               6, 64, 1, 1, 64, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_8x32x1_1x32x1_hvx,
+               8, 32, 1, 1, 32, 1, /*flags=*/0, float, float, float)
+YNN_DOT_KERNEL(arch_flag::hvx, dot_fp32_8x64x1_1x32x1_hvx,
+               8, 64, 1, 1, 64, 1, /*flags=*/0, float, float, float)
+#endif  // YNN_ARCH_HEXAGON_HVX
+
 #if defined(YNN_ARCH_X86) || defined(YNN_ARCH_ARM64)
 // On x86 and on ARM64, we consider kernels that use FMA to be consistent (and
 // not ones that don't).
