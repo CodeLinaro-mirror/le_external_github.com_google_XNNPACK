@@ -49,20 +49,30 @@ struct KernelInfo {
   size_t tile_k;
   uint32_t flags;
   multi_type type;
+  dot_kernel_init_fn init_fn = nullptr;
+
+  dot_kernel_state init() const {
+    dot_kernel_state state;
+    if (init_fn) {
+      init_fn(&state);
+    }
+    return state;
+  }
 };
 
 KernelInfo all_kernels[] = {
-#define YNN_DOT_KERNEL(arch_flags, name, block_m, block_n, block_k, tile_m, \
-                       tile_n, tile_k, flags, a_type, b_type, c_type)       \
-  KernelInfo{arch_flags,                                                    \
-             name,                                                          \
-             #name,                                                         \
-             {block_m, block_n, block_k},                                   \
-             tile_m,                                                        \
-             tile_n,                                                        \
-             tile_k,                                                        \
-             flags,                                                         \
-             multi_type_of(a_type(), b_type(), c_type())},
+#define YNN_DOT_KERNEL(arch_flags, name, init_fn, block_m, block_n, block_k,  \
+                       tile_m, tile_n, tile_k, flags, a_type, b_type, c_type) \
+  KernelInfo{arch_flags,                                                      \
+             name,                                                            \
+             #name,                                                           \
+             {block_m, block_n, block_k},                                     \
+             tile_m,                                                          \
+             tile_n,                                                          \
+             tile_k,                                                          \
+             flags,                                                           \
+             multi_type_of(a_type(), b_type(), c_type()),                     \
+             init_fn},
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL
 };
@@ -130,11 +140,14 @@ void TestMatMul(AT, BT, CT, size_t k) {
     const bool pack_a = kernel.flags & dot_flag::transpose_a;
     Tensor<AT> packed_a = pack_a ? transpose_a(a, tile_m, tile_k) : a;
 
+    dot_kernel_state kernel_state = kernel.init();
+
     kernel.kernel(m, n, 1, 1, k,
                   packed_a.stride_bytes(0) / (pack_a ? tile_k : 1), 0, 0,
                   packed_a.base(), 0, 0, packed_b.stride_bytes(0) / tile_k,
                   packed_b.base(), kernel_c.stride_bytes(0), kernel_c.base(),
-                  kernel_c.stride_bytes(0), kernel_c.base());
+                  kernel_c.stride_bytes(0), kernel_c.base(),
+                  kernel_state ? &kernel_state : nullptr);
 
     if (c.base()) {
       int finite = 0;

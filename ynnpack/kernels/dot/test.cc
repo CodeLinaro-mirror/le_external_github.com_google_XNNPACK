@@ -99,6 +99,15 @@ struct KernelInfo {
   size_t tile_k;
   uint32_t flags;
   multi_type type;
+  dot_kernel_init_fn init_fn = nullptr;
+
+  dot_kernel_state init() const {
+    dot_kernel_state state;
+    if (init_fn) {
+      init_fn(&state);
+    }
+    return state;
+  }
 };
 
 template <typename AT, typename BT, typename CT>
@@ -153,10 +162,13 @@ void TestMatMul(
   Tensor<BT> packed_b = unpacked_b ? b : pack_b(b, tile_k, tile_n);
   Tensor<AT> packed_a = pack_a ? transpose_a(a, tile_m, tile_k) : a;
 
+  dot_kernel_state kernel_state = kernel.init();
+
   kernel.kernel(m, n, 1, 1, k, packed_a.stride_bytes(0) / (pack_a ? tile_k : 1),
                 0, 0, packed_a.base(), 0, 0, packed_b.stride_bytes(0) / tile_k,
                 packed_b.base(), c.stride_bytes(0),
-                init_zero ? nullptr : c.base(), c.stride_bytes(0), c.base());
+                init_zero ? nullptr : c.base(), c.stride_bytes(0), c.base(),
+                kernel_state ? &kernel_state : nullptr);
 
   // Verify results.
   Reference(a, b, expected);
@@ -252,12 +264,15 @@ void TestConv2D(AT, BT, CT, const KernelInfo& kernel) {
     // tile_n. The kernel might also require b to be packed (tile_k > 1).
     Tensor<BT> packed_b = pack_b(b, tile_k, tile_n);
 
+    dot_kernel_state kernel_state = kernel.init();
+
     kernel.kernel(
         w, co, kh, kw, ci, packed_a.stride_bytes(0) / (pack_a ? tile_k : 1),
         packed_a.stride_bytes(1), packed_a.stride_bytes(2), packed_a.base(),
         packed_b.stride_bytes(0), packed_b.stride_bytes(1),
         packed_b.stride_bytes(2) / tile_k, packed_b.base(), c.stride_bytes(0),
-        c.base(), c.stride_bytes(0), c.base());
+        c.base(), c.stride_bytes(0), c.base(),
+        kernel_state ? &kernel_state : nullptr);
 
     // Verify results.
     a = make_stencil_dim(a, 1, kw).transpose({2, 0, 1, 3});
@@ -418,18 +433,19 @@ TEST_P(Dot, Conv2D) {
   });
 }
 
-#define YNN_DOT_KERNEL(arch_flags, name, block_m, block_n, block_k, tile_m, \
-                       tile_n, tile_k, flags, a_type, b_type, c_type)       \
-  INSTANTIATE_TEST_SUITE_P(name, Dot,                                       \
-                           testing::Values(KernelInfo{                      \
-                               arch_flags,                                  \
-                               name,                                        \
-                               {block_m, block_n, block_k},                 \
-                               tile_m,                                      \
-                               tile_n,                                      \
-                               tile_k,                                      \
-                               flags,                                       \
-                               multi_type_of(a_type(), b_type(), c_type())}));
+#define YNN_DOT_KERNEL(arch_flags, name, init_fn, block_m, block_n, block_k,  \
+                       tile_m, tile_n, tile_k, flags, a_type, b_type, c_type) \
+  INSTANTIATE_TEST_SUITE_P(                                                   \
+      name, Dot,                                                              \
+      testing::Values(KernelInfo{arch_flags,                                  \
+                                 name,                                        \
+                                 {block_m, block_n, block_k},                 \
+                                 tile_m,                                      \
+                                 tile_n,                                      \
+                                 tile_k,                                      \
+                                 flags,                                       \
+                                 multi_type_of(a_type(), b_type(), c_type()), \
+                                 init_fn}));
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL
 

@@ -152,7 +152,8 @@ void dot_fp32_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2, size_t k1,
                           size_t a_stride_k2, const void* a, size_t b_stride_k3,
                           size_t b_stride_k2, size_t b_stride_k1, const void* b,
                           size_t c_in_stride_m, const void* c_in,
-                          size_t c_out_stride_m, void* c_out) {
+                          size_t c_out_stride_m, void* c_out,
+                          dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const float*>(a), b_stride_k3, b_stride_k2, b_stride_k1,
             static_cast<const float*>(b), c_in_stride_m,
@@ -165,7 +166,8 @@ void dot_fp64_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2, size_t k1,
                           size_t a_stride_k2, const void* a, size_t b_stride_k3,
                           size_t b_stride_k2, size_t b_stride_k1, const void* b,
                           size_t c_in_stride_m, const void* c_in,
-                          size_t c_out_stride_m, void* c_out) {
+                          size_t c_out_stride_m, void* c_out,
+                          dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const double*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const double*>(b), c_in_stride_m,
@@ -173,11 +175,14 @@ void dot_fp64_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2, size_t k1,
             static_cast<double*>(c_out));
 }
 
-void dot_fp16_fp16_fp32_1xNx1_1x1x1(
-    size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
-    size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
-    size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+void dot_fp16_fp16_fp32_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2,
+                                    size_t k1, size_t a_stride_m,
+                                    size_t a_stride_k3, size_t a_stride_k2,
+                                    const void* a, size_t b_stride_k3,
+                                    size_t b_stride_k2, size_t b_stride_k1,
+                                    const void* b, size_t c_in_stride_m,
+                                    const void* c_in, size_t c_out_stride_m,
+                                    void* c_out, dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const half*>(a), b_stride_k3, b_stride_k2, b_stride_k1,
             static_cast<const half*>(b), c_in_stride_m,
@@ -185,11 +190,14 @@ void dot_fp16_fp16_fp32_1xNx1_1x1x1(
             static_cast<float*>(c_out));
 }
 
-void dot_bf16_bf16_fp32_1xNx1_1x1x1(
-    size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
-    size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
-    size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+void dot_bf16_bf16_fp32_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2,
+                                    size_t k1, size_t a_stride_m,
+                                    size_t a_stride_k3, size_t a_stride_k2,
+                                    const void* a, size_t b_stride_k3,
+                                    size_t b_stride_k2, size_t b_stride_k1,
+                                    const void* b, size_t c_in_stride_m,
+                                    const void* c_in, size_t c_out_stride_m,
+                                    void* c_out, dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const bfloat16*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const bfloat16*>(b), c_in_stride_m,
@@ -197,11 +205,14 @@ void dot_bf16_bf16_fp32_1xNx1_1x1x1(
             static_cast<float*>(c_out));
 }
 
-void dot_int8_int8_int32_1xNx1_1x1x1(
-    size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
-    size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
-    size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+void dot_int8_int8_int32_1xNx1_1x1x1(size_t m, size_t n, size_t k3, size_t k2,
+                                     size_t k1, size_t a_stride_m,
+                                     size_t a_stride_k3, size_t a_stride_k2,
+                                     const void* a, size_t b_stride_k3,
+                                     size_t b_stride_k2, size_t b_stride_k1,
+                                     const void* b, size_t c_in_stride_m,
+                                     const void* c_in, size_t c_out_stride_m,
+                                     void* c_out, dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const int8_t*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const int8_t*>(b), c_in_stride_m,
@@ -213,7 +224,8 @@ void dot_uint8_int8_int32_1xNx1_1x1x1(
     size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
     size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
     size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+    const void* c_in, size_t c_out_stride_m, void* c_out,
+    dot_kernel_state* /*state*/) {
   dot_1x1x1(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const uint8_t*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const int8_t*>(b), c_in_stride_m,
@@ -221,11 +233,14 @@ void dot_uint8_int8_int32_1xNx1_1x1x1(
             static_cast<int32_t*>(c_out));
 }
 
-void dot_int8_int4_int32_1xNx2_1x1x2(
-    size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
-    size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
-    size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+void dot_int8_int4_int32_1xNx2_1x1x2(size_t m, size_t n, size_t k3, size_t k2,
+                                     size_t k1, size_t a_stride_m,
+                                     size_t a_stride_k3, size_t a_stride_k2,
+                                     const void* a, size_t b_stride_k3,
+                                     size_t b_stride_k2, size_t b_stride_k1,
+                                     const void* b, size_t c_in_stride_m,
+                                     const void* c_in, size_t c_out_stride_m,
+                                     void* c_out, dot_kernel_state* /*state*/) {
   dot_1x1x2(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const int8_t*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const int4x2*>(b), c_in_stride_m,
@@ -233,11 +248,14 @@ void dot_int8_int4_int32_1xNx2_1x1x2(
             static_cast<int32_t*>(c_out));
 }
 
-void dot_int8_int2_int32_1xNx4_1x1x4(
-    size_t m, size_t n, size_t k3, size_t k2, size_t k1, size_t a_stride_m,
-    size_t a_stride_k3, size_t a_stride_k2, const void* a, size_t b_stride_k3,
-    size_t b_stride_k2, size_t b_stride_k1, const void* b, size_t c_in_stride_m,
-    const void* c_in, size_t c_out_stride_m, void* c_out) {
+void dot_int8_int2_int32_1xNx4_1x1x4(size_t m, size_t n, size_t k3, size_t k2,
+                                     size_t k1, size_t a_stride_m,
+                                     size_t a_stride_k3, size_t a_stride_k2,
+                                     const void* a, size_t b_stride_k3,
+                                     size_t b_stride_k2, size_t b_stride_k1,
+                                     const void* b, size_t c_in_stride_m,
+                                     const void* c_in, size_t c_out_stride_m,
+                                     void* c_out, dot_kernel_state* /*state*/) {
   dot_1x1x4(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2,
             static_cast<const int8_t*>(a), b_stride_k3, b_stride_k2,
             b_stride_k1, static_cast<const int2x4*>(b), c_in_stride_m,
@@ -340,7 +358,8 @@ struct optimizer {
 
   void operator()(uint64_t arch, int block_m, int block_n, int block_k,
                   int tile_m, int tile_n, int tile_k, uint32_t flags,
-                  dot_kernel_fn kernel, const char* name) {
+                  dot_kernel_fn kernel, const char* name,
+                  dot_kernel_init_fn init_fn = nullptr) {
     if ((required_flags & flags) != required_flags) {
       return;
     }
@@ -378,11 +397,15 @@ struct optimizer {
     if (dot_cost_k >= result.cost) {
       return;
     }
-    result = {
-        kernel,  block_m,    block_n,
-        block_k, tile_n,     tile_k,
-        flags,   dot_cost_k, result.max_block_n,
-    };
+    result.kernel = kernel;
+    result.block_m = block_m;
+    result.block_n = block_n;
+    result.block_k = block_k;
+    result.tile_n = tile_n;
+    result.tile_k = tile_k;
+    result.flags = flags;
+    result.cost = dot_cost_k;
+    result.init_fn = init_fn;
     kernel_used = name;
   }
 };
@@ -437,12 +460,12 @@ dot_kernel get_dot_kernel(const dot_shape& shape, dot_packed_shape packed_shape,
   };
 
 // TODO: Limit this to only a subset of the "prod" kernels.
-#define YNN_DOT_KERNEL(arch, name, block_m, block_n, block_k, tile_m, tile_n, \
-                       tile_k, flags, a_type, b_type, c_type)                 \
-  if (std::is_same<A, a_type>::value && std::is_same<B, b_type>::value &&     \
-      std::is_same<C, c_type>::value) {                                       \
-    optimizer(arch, block_m, block_n, block_k, tile_m, tile_n, tile_k, flags, \
-              name, #name);                                                   \
+#define YNN_DOT_KERNEL(arch, name, init_fn, block_m, block_n, block_k, tile_m, \
+                       tile_n, tile_k, flags, a_type, b_type, c_type)          \
+  if (std::is_same<A, a_type>::value && std::is_same<B, b_type>::value &&      \
+      std::is_same<C, c_type>::value) {                                        \
+    optimizer(arch, block_m, block_n, block_k, tile_m, tile_n, tile_k, flags,  \
+              name, #name, init_fn);                                           \
   }
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL

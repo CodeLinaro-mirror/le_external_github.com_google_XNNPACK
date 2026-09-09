@@ -62,22 +62,24 @@ struct kernel_info {
   size_t block_m, block_n, block_k, tile_m, tile_n, tile_k;
   uint32_t flags;
   multi_type type;
+  dot_kernel_init_fn init_fn = nullptr;
 };
 
 kernel_info get_kernel(const std::string& kernel_name) {
   std::vector<kernel_info> kernels;
-#define YNN_DOT_KERNEL(arch, name, block_m, block_n, block_k, tile_m, tile_n, \
-                       tile_k, flags, a_type, b_type, c_type)                 \
-  if (#name == kernel_name) {                                                 \
-    if (!is_arch_supported(arch)) {                                           \
-      std::cerr << "Kernel architecture not supported by this CPU\n";         \
-      return kernel_info{};                                                   \
-    }                                                                         \
-    return {#name,   name,                                                    \
-            block_m, block_n,                                                 \
-            block_k, tile_m,                                                  \
-            tile_n,  tile_k,                                                  \
-            flags,   multi_type_of(a_type{}, b_type{}, c_type{})};            \
+#define YNN_DOT_KERNEL(arch, name, init_fn, block_m, block_n, block_k, tile_m, \
+                       tile_n, tile_k, flags, a_type, b_type, c_type)          \
+  if (#name == kernel_name) {                                                  \
+    if (!is_arch_supported(arch)) {                                            \
+      std::cerr << "Kernel architecture not supported by this CPU\n";          \
+      return kernel_info{};                                                    \
+    }                                                                          \
+    return {#name,   name,                                                     \
+            block_m, block_n,                                                  \
+            block_k, tile_m,                                                   \
+            tile_n,  tile_k,                                                   \
+            flags,   multi_type_of(a_type{}, b_type{}, c_type{}),              \
+            init_fn};                                                          \
   }
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL
@@ -147,15 +149,20 @@ double run_benchmark(TA, TB, TC, const kernel_info& kernel, size_t m, size_t n,
 
   a = pack_a ? transpose_a(a, tile_m, tile_k) : a;
 
+  dot_kernel_state kernel_state;
+  if (kernel.init_fn) {
+    kernel.init_fn(&kernel_state);
+  }
+
   auto kernel_wrapper =
       [&](size_t m, size_t n, span<const size_t> k, const void* a_ptr,
           size_t a_stride_m, span<const size_t> a_k_strides, const void* b_ptr,
           span<const size_t> b_k_strides, size_t init_c_stride_m,
-          const void* init_c, void* c_ptr) {
-        kernel.kernel(m, n, k[2], k[1], k[0], a_stride_m,
-                      a_k_strides[2], a_k_strides[1], a_ptr, b_k_strides[2],
-                      b_k_strides[1], b_k_strides[0], b_ptr, init_c_stride_m,
-                      init_c, c.stride(0) * sizeof(TC), c_ptr);
+          const void* init_c, void* c_ptr, dot_kernel_state* state = nullptr) {
+        kernel.kernel(m, n, k[2], k[1], k[0], a_stride_m, a_k_strides[2],
+                      a_k_strides[1], a_ptr, b_k_strides[2], b_k_strides[1],
+                      b_k_strides[0], b_ptr, init_c_stride_m, init_c,
+                      c.stride(0) * sizeof(TC), c_ptr, state);
       };
 
   const size_t a_stride_m = pack_a ? kernel.tile_k * sizeof(TA) / a_elem_count
@@ -175,7 +182,7 @@ double run_benchmark(TA, TB, TC, const kernel_info& kernel, size_t m, size_t n,
     run_dot(loops, m, n, ks, kernel.block_m, kernel.block_n, kernel.block_k,
             a_stride_m, a_k_strides, a.base(), b_k_strides, b_stride_n,
             b.base(), 0, nullptr, c_stride_m, c_stride_n, c.base(),
-            kernel_wrapper);
+            kernel_wrapper, kernel_state ? &kernel_state : nullptr);
   });
   // Check that the kernel didn't compute the wrong thing. We assume the kernel
   // is correct, but we have some logic here that needs validation too. We

@@ -53,7 +53,8 @@ Shape shape = {240, 240, 240};
 template <typename TA, typename TB, typename TC>
 void dot(benchmark::State& state, uint64_t arch_flags, dot_kernel_fn kernel,
          size_t block_m, size_t block_n, size_t tile_m, size_t tile_n,
-         size_t tile_k, uint32_t flags, TA, TB, TC) {
+         size_t tile_k, uint32_t flags, TA, TB, TC,
+         dot_kernel_init_fn init_fn = nullptr) {
   if (!is_arch_supported(arch_flags)) {
     state.SkipWithMessage("Unsupported hardware");
     return;
@@ -84,13 +85,19 @@ void dot(benchmark::State& state, uint64_t arch_flags, dot_kernel_fn kernel,
     a = a.reshape({k / tile_k, m * tile_k});
   }
 
+  dot_kernel_state kernel_state;
+  if (init_fn) {
+    init_fn(&kernel_state);
+  }
+
   for (auto _ : state) {
     for (size_t i = 0; i < m; i += block_m) {
       size_t m_i = std::min(block_m, m - i);
       const void* a_i = transpose_a ? &a(0, i * tile_k) : &a(i, 0);
       kernel(m_i, n, 1, 1, k, a.stride_bytes(0) / (transpose_a ? tile_k : 1), 0,
              0, a_i, 0, 0, b.stride_bytes(0) / tile_k, b.base(),
-             /*init_c_stride_m=*/0, nullptr, c.stride_bytes(0), &c(i, 0));
+             /*init_c_stride_m=*/0, nullptr, c.stride_bytes(0), &c(i, 0),
+             kernel_state ? &kernel_state : nullptr);
     }
   }
 
@@ -107,10 +114,11 @@ void dot(benchmark::State& state, uint64_t arch_flags, dot_kernel_fn kernel,
       benchmark::Counter(state.iterations() * ops, benchmark::Counter::kIsRate);
 }
 
-#define YNN_DOT_KERNEL(arch_flags, kernel, block_m, block_n, block_k, tile_m,  \
-                       tile_n, tile_k, flags, a_type, b_type, c_type)          \
+#define YNN_DOT_KERNEL(arch_flags, kernel, init_fn, block_m, block_n, block_k, \
+                       tile_m, tile_n, tile_k, flags, a_type, b_type, c_type)  \
   BENCHMARK_CAPTURE(dot, kernel, arch_flags, kernel, block_m, block_n, tile_m, \
-                    tile_n, tile_k, flags, a_type(), b_type(), c_type())       \
+                    tile_n, tile_k, flags, a_type(), b_type(), c_type(),       \
+                    init_fn)                                                   \
       ->UseRealTime();
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL

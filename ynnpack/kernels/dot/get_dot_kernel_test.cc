@@ -20,8 +20,8 @@ namespace ynn {
 
 // Enable us to refer to kernels by name instead of by function pointer.
 std::map<dot_kernel_fn, std::string> kernels = {
-#define YNN_DOT_KERNEL(arch_flags, kernel, block_m, block_n, block_k, tile_m, \
-                       tile_n, tile_k, flags, a_type, b_type, c_type)         \
+#define YNN_DOT_KERNEL(arch_flags, kernel, init_fn, block_m, block_n, block_k, \
+                       tile_m, tile_n, tile_k, flags, a_type, b_type, c_type)  \
   {kernel, #kernel},
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL
@@ -47,6 +47,9 @@ constexpr uint64_t arch_flags_fma3 = arch_flag::fma3 | arch_flags_avx;
 constexpr uint64_t arch_flags_avx2_fma3 = arch_flags_avx2 | arch_flags_fma3;
 constexpr uint64_t arch_flags_avx512 =
     arch_flag::avx512 | arch_flags_fma3 | arch_flags_avx2;
+constexpr uint64_t arch_flags_amxbf16 = arch_flags_avx512 | arch_flag::amxbf16;
+constexpr uint64_t arch_flags_amxfp16 = arch_flags_avx512 | arch_flag::amxfp16;
+constexpr uint64_t arch_flags_amxint8 = arch_flags_avx512 | arch_flag::amxint8;
 
 TEST(get_dot_kernel, small_m) {
   dot_type fp32 = {ynn_type_fp32, ynn_type_fp32, ynn_type_fp32};
@@ -183,6 +186,95 @@ TEST(get_dot_kernel, large_tile_k_1) {
   ASSERT_EQ(fp32_large(arch_flags_avx2), "dot_fp32_4x16x1_1x8x1_avx");
   ASSERT_EQ(fp32_large(arch_flags_avx2_fma3), "dot_fp32_6x16x1_1x8x1_fma3");
   ASSERT_EQ(fp32_large(arch_flags_avx512), "dot_fp32_5x64x1_1x16x1_avx512");
+}
+
+TEST(get_dot_kernel, amx_init) {
+  // Non-AMX kernels do not have an init function.
+  dot_type fp32 = {ynn_type_fp32, ynn_type_fp32, ynn_type_fp32};
+  dot_kernel non_amx_kernel = get_dot_kernel(
+      fp32, {large_shape, large_shape, large_shape}, /*packed_shape=*/{},
+      /*required_flags=*/0, /*transpose_a=*/std::nullopt, arch_flags_sse2);
+  EXPECT_EQ(non_amx_kernel.init_fn, nullptr);
+  EXPECT_FALSE(non_amx_kernel.init());
+
+#if !YNN_COMPILER_HAS_FEATURE(memory_sanitizer)
+#ifdef YNN_ARCH_X86_AMXBF16
+  {
+    dot_type bf16 = {ynn_type_bf16, ynn_type_bf16, ynn_type_fp32};
+    dot_kernel kernel = get_dot_kernel(
+        bf16, {large_shape, large_shape, large_shape}, /*packed_shape=*/{},
+        /*required_flags=*/0, /*transpose_a=*/std::nullopt, arch_flags_amxbf16);
+    EXPECT_EQ(kernels[kernel.kernel],
+              "dot_bf16_bf16_fp32_32x32x32_16x16x2_amxbf16");
+    EXPECT_NE(kernel.init_fn, nullptr);
+    dot_kernel_state state = kernel.init();
+    EXPECT_TRUE(state);
+    EXPECT_NE(state.destroy_fn, nullptr);
+
+    dot_kernel_state direct_state;
+    kernel.init_fn(&direct_state);
+    EXPECT_TRUE(direct_state);
+    EXPECT_NE(direct_state.destroy_fn, nullptr);
+  }
+#endif  // YNN_ARCH_X86_AMXBF16
+
+#ifdef YNN_ARCH_X86_AMXFP16
+  {
+    dot_type fp16 = {ynn_type_fp16, ynn_type_fp16, ynn_type_fp32};
+    dot_kernel kernel = get_dot_kernel(
+        fp16, {large_shape, large_shape, large_shape}, /*packed_shape=*/{},
+        /*required_flags=*/0, /*transpose_a=*/std::nullopt, arch_flags_amxfp16);
+    EXPECT_EQ(kernels[kernel.kernel],
+              "dot_fp16_fp16_fp32_16x64x32_16x16x2_amxfp16");
+    EXPECT_NE(kernel.init_fn, nullptr);
+    dot_kernel_state state = kernel.init();
+    EXPECT_TRUE(state);
+    EXPECT_NE(state.destroy_fn, nullptr);
+
+    dot_kernel_state direct_state;
+    kernel.init_fn(&direct_state);
+    EXPECT_TRUE(direct_state);
+    EXPECT_NE(direct_state.destroy_fn, nullptr);
+  }
+#endif  // YNN_ARCH_X86_AMXFP16
+
+#ifdef YNN_ARCH_X86_AMXINT8
+  {
+    dot_type int8 = {ynn_type_int8, ynn_type_int8, ynn_type_int32};
+    dot_kernel kernel = get_dot_kernel(
+        int8, {large_shape, large_shape, large_shape}, /*packed_shape=*/{},
+        /*required_flags=*/0, /*transpose_a=*/std::nullopt, arch_flags_amxint8);
+    EXPECT_EQ(kernels[kernel.kernel],
+              "dot_int8_int8_int32_32x32x64_16x16x4_amxint8");
+    EXPECT_NE(kernel.init_fn, nullptr);
+    dot_kernel_state state = kernel.init();
+    EXPECT_TRUE(state);
+    EXPECT_NE(state.destroy_fn, nullptr);
+
+    dot_kernel_state direct_state;
+    kernel.init_fn(&direct_state);
+    EXPECT_TRUE(direct_state);
+    EXPECT_NE(direct_state.destroy_fn, nullptr);
+  }
+  {
+    dot_type uint8 = {ynn_type_uint8, ynn_type_int8, ynn_type_int32};
+    dot_kernel kernel = get_dot_kernel(
+        uint8, {large_shape, large_shape, large_shape}, /*packed_shape=*/{},
+        /*required_flags=*/0, /*transpose_a=*/std::nullopt, arch_flags_amxint8);
+    EXPECT_EQ(kernels[kernel.kernel],
+              "dot_uint8_int8_int32_32x32x64_16x16x4_amxint8");
+    EXPECT_NE(kernel.init_fn, nullptr);
+    dot_kernel_state state = kernel.init();
+    EXPECT_TRUE(state);
+    EXPECT_NE(state.destroy_fn, nullptr);
+
+    dot_kernel_state direct_state;
+    kernel.init_fn(&direct_state);
+    EXPECT_TRUE(direct_state);
+    EXPECT_NE(direct_state.destroy_fn, nullptr);
+  }
+#endif  // YNN_ARCH_X86_AMXINT8
+#endif  // !YNN_COMPILER_HAS_FEATURE(memory_sanitizer)
 }
 
 #endif  // YNN_ARCH_X86

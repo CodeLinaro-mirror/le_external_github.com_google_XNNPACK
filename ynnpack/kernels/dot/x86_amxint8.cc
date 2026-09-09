@@ -3,12 +3,16 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
+#include "ynnpack/kernels/dot/dot.h"
 #include "ynnpack/kernels/dot/x86_amx.h"
 
 namespace ynn {
+
+void init_x86_amxint8(dot_kernel_state* state) { init_amx_state(state); }
 
 template <int c, int a, int b>
 struct dpbssd {
@@ -28,40 +32,56 @@ void dot_int8_int8_int32_16x64x64_16x16x4_amxint8(
     size_t M, size_t N, size_t K3, size_t K2, size_t K1, size_t A_stride_m,
     size_t A_stride_k3, size_t A_stride_k2, const void* A, size_t B_stride_k3,
     size_t B_stride_k2, size_t B_stride_k1, const void* B, size_t C_in_stride_m,
-    const void* C_in, size_t C_out_stride_m, void* C_out) {
+    const void* C_in, size_t C_out_stride_m, void* C_out,
+    dot_kernel_state* state) {
+  auto* amx_state = state ? state->as<AmxConfigState>() : nullptr;
+  assert(amx_state != nullptr);
   x86_amx_dot_1x4<int8_t, int32_t, dpbssd>(
       M, N, K3, K2, K1, A_stride_m, A_stride_k3, A_stride_k2, A, B_stride_k3,
-      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out);
+      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out,
+      *amx_state);
 }
 
 void dot_uint8_int8_int32_16x64x64_16x16x4_amxint8(
     size_t M, size_t N, size_t K3, size_t K2, size_t K1, size_t A_stride_m,
     size_t A_stride_k3, size_t A_stride_k2, const void* A, size_t B_stride_k3,
     size_t B_stride_k2, size_t B_stride_k1, const void* B, size_t C_in_stride_m,
-    const void* C_in, size_t C_out_stride_m, void* C_out) {
+    const void* C_in, size_t C_out_stride_m, void* C_out,
+    dot_kernel_state* state) {
+  auto* amx_state = state ? state->as<AmxConfigState>() : nullptr;
+  assert(amx_state != nullptr);
   x86_amx_dot_1x4<int8_t, int32_t, dpbusd>(
       M, N, K3, K2, K1, A_stride_m, A_stride_k3, A_stride_k2, A, B_stride_k3,
-      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out);
+      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out,
+      *amx_state);
 }
 
 void dot_int8_int8_int32_32x32x64_16x16x4_amxint8(
     size_t M, size_t N, size_t K3, size_t K2, size_t K1, size_t A_stride_m,
     size_t A_stride_k3, size_t A_stride_k2, const void* A, size_t B_stride_k3,
     size_t B_stride_k2, size_t B_stride_k1, const void* B, size_t C_in_stride_m,
-    const void* C_in, size_t C_out_stride_m, void* C_out) {
+    const void* C_in, size_t C_out_stride_m, void* C_out,
+    dot_kernel_state* state) {
+  auto* amx_state = state ? state->as<AmxConfigState>() : nullptr;
+  assert(amx_state != nullptr);
   x86_amx_dot_2x2<int8_t, int32_t, dpbssd>(
       M, N, K3, K2, K1, A_stride_m, A_stride_k3, A_stride_k2, A, B_stride_k3,
-      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out);
+      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out,
+      *amx_state);
 }
 
 void dot_uint8_int8_int32_32x32x64_16x16x4_amxint8(
     size_t M, size_t N, size_t K3, size_t K2, size_t K1, size_t A_stride_m,
     size_t A_stride_k3, size_t A_stride_k2, const void* A, size_t B_stride_k3,
     size_t B_stride_k2, size_t B_stride_k1, const void* B, size_t C_in_stride_m,
-    const void* C_in, size_t C_out_stride_m, void* C_out) {
-  x86_amx_dot_2x2<int8_t, int32_t, dpbusd>(
+    const void* C_in, size_t C_out_stride_m, void* C_out,
+    dot_kernel_state* state) {
+  auto* amx_state = state ? state->as<AmxConfigState>() : nullptr;
+  assert(amx_state != nullptr);
+  x86_amx_dot_2x2<uint8_t, int32_t, dpbusd>(
       M, N, K3, K2, K1, A_stride_m, A_stride_k3, A_stride_k2, A, B_stride_k3,
-      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out);
+      B_stride_k2, B_stride_k1, B, C_in_stride_m, C_in, C_out_stride_m, C_out,
+      *amx_state);
 }
 
 }  // namespace ynn

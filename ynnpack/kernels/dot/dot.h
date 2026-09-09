@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>  // IWYU pragma: keep
+#include <cstring>
 #include <limits>
 #include <optional>
 
@@ -44,6 +45,54 @@ enum {
 
 }  // namespace dot_flag
 
+// Generic stack storage for kernel-specific execution state (e.g. AMX
+// configuration).
+struct dot_kernel_state {
+  alignas(64) std::byte storage[128];
+  void (*destroy_fn)(dot_kernel_state*) = nullptr;
+
+  dot_kernel_state() = default;
+
+  ~dot_kernel_state() {
+    if (destroy_fn) {
+      destroy_fn(this);
+    }
+  }
+
+  dot_kernel_state(const dot_kernel_state&) = delete;
+  dot_kernel_state& operator=(const dot_kernel_state&) = delete;
+
+  dot_kernel_state(dot_kernel_state&& other) noexcept {
+    std::memcpy(storage, other.storage, sizeof(storage));
+    destroy_fn = other.destroy_fn;
+    other.destroy_fn = nullptr;
+  }
+
+  dot_kernel_state& operator=(dot_kernel_state&& other) noexcept {
+    if (this != &other) {
+      if (destroy_fn) {
+        destroy_fn(this);
+      }
+      std::memcpy(storage, other.storage, sizeof(storage));
+      destroy_fn = other.destroy_fn;
+      other.destroy_fn = nullptr;
+    }
+    return *this;
+  }
+
+  explicit operator bool() const { return destroy_fn != nullptr; }
+
+  template <typename T>
+  T* as() {
+    return reinterpret_cast<T*>(storage);
+  }
+
+  template <typename T>
+  const T* as() const {
+    return reinterpret_cast<const T*>(storage);
+  }
+};
+
 // Dot kernels compute the following:
 //
 //    C_out(i, j) = 0
@@ -57,15 +106,29 @@ typedef void (*dot_kernel_fn)(size_t m, size_t n, size_t k3, size_t k2,
                               size_t b_stride_k3, size_t b_stride_k2,
                               size_t b_stride_k1, const void* b,
                               size_t c_in_stride_m, const void* c_in,
-                              size_t c_out_stride_m, void* c_out);
+                              size_t c_out_stride_m, void* c_out,
+                              dot_kernel_state* state);
 
-#define YNN_DOT_KERNEL(arch, name, block_m, block_n, block_k, tile_m, tile_n, \
-                       tile_k, transpose_a, type_a, type_b, type_c)           \
-  void name(size_t m, size_t n, size_t k3, size_t k2, size_t k1,              \
-            size_t a_stride_m, size_t a_stride_k3, size_t a_stride_k2,        \
-            const void* a, size_t b_stride_k3, size_t b_stride_k2,            \
-            size_t b_stride_k1, const void* b, size_t c_in_stride_m,          \
-            const void* c_in, size_t c_out_stride_m, void* c_out);
+using dot_kernel_init_fn = void (*)(dot_kernel_state*);
+
+#ifdef YNN_ARCH_X86_AMXBF16
+void init_x86_amxbf16(dot_kernel_state* state);
+#endif
+#ifdef YNN_ARCH_X86_AMXFP16
+void init_x86_amxfp16(dot_kernel_state* state);
+#endif
+#ifdef YNN_ARCH_X86_AMXINT8
+void init_x86_amxint8(dot_kernel_state* state);
+#endif
+
+#define YNN_DOT_KERNEL(arch, name, init_fn, block_m, block_n, block_k, tile_m, \
+                       tile_n, tile_k, transpose_a, type_a, type_b, type_c)    \
+  void name(size_t m, size_t n, size_t k3, size_t k2, size_t k1,               \
+            size_t a_stride_m, size_t a_stride_k3, size_t a_stride_k2,         \
+            const void* a, size_t b_stride_k3, size_t b_stride_k2,             \
+            size_t b_stride_k1, const void* b, size_t c_in_stride_m,           \
+            const void* c_in, size_t c_out_stride_m, void* c_out,              \
+            dot_kernel_state* state = nullptr);
 #include "ynnpack/kernels/dot/kernels.inc"
 #undef YNN_DOT_KERNEL
 
@@ -107,6 +170,27 @@ struct dot_kernel {
   // If not specifically known, this is the maximum `block_n` value that could
   // be returned by another compatible call to `get_dot_kernel`.
   int max_block_n = 0;
+
+  dot_kernel_init_fn init_fn = nullptr;
+
+  dot_kernel_state init() const {
+    dot_kernel_state state;
+    if (init_fn) {
+      init_fn(&state);
+    }
+    return state;
+  }
+
+  void operator()(size_t m, size_t n, size_t k3, size_t k2, size_t k1,
+                  size_t a_stride_m, size_t a_stride_k3, size_t a_stride_k2,
+                  const void* a, size_t b_stride_k3, size_t b_stride_k2,
+                  size_t b_stride_k1, const void* b, size_t c_in_stride_m,
+                  const void* c_in, size_t c_out_stride_m, void* c_out,
+                  dot_kernel_state* state = nullptr) const {
+    kernel(m, n, k3, k2, k1, a_stride_m, a_stride_k3, a_stride_k2, a,
+           b_stride_k3, b_stride_k2, b_stride_k1, b, c_in_stride_m, c_in,
+           c_out_stride_m, c_out, state);
+  }
 };
 
 // If we don't know the shape of a dot, just assume it's big.
