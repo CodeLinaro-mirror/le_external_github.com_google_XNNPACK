@@ -54,6 +54,7 @@ _ISA_LIST = frozenset({
     'fp16arith',
     'hexagon',
     'hvx',
+    'hmx',
     'neon',
     'neonbf16',
     'neondot',
