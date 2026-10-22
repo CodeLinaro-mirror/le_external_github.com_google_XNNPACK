@@ -383,6 +383,48 @@ TEST(pack_subbyte, int4_transpose_false) {
   EXPECT_THAT(output, ElementsAreArray(expected));
 }
 
+TEST(pack_subbyte, int4_transpose_true) {
+  const bool transpose = true;
+  const int element_size_bits = 4;
+  const int tile_m = 4;
+  const int tile_n = 4;
+
+  packer p(transpose, element_size_bits, tile_m, tile_n);
+
+  const int m = 8;
+  const int n = 6;
+
+  std::vector<int4x2> input = iota_columns<int4x2>(transpose, m, n);
+  std::vector<int4x2> output(32);
+
+  p.pack(m, n, /*input_stride=*/4,
+         /*input=*/input.data(),
+         /*output_stride=*/8,
+         /*output_block_stride=*/16,
+         /*output=*/output.data());
+
+  std::vector<Matcher<int4x2>> expected = {
+      // no = 0, mo = 0
+      Int4x2Match(0, 1),   Int4x2Match(2, 3),   Int4x2Match(-8, -7),
+      Int4x2Match(-6, -5), Int4x2Match(0, 1),   Int4x2Match(2, 3),
+      Int4x2Match(-8, -7), Int4x2Match(-6, -5),
+      // no = 0, mo = 1
+      Int4x2Match(4, 5),   Int4x2Match(6, 7),   Int4x2Match(-4, -3),
+      Int4x2Match(-2, -1), Int4x2Match(4, 5),   Int4x2Match(6, 7),
+      Int4x2Match(-4, -3), Int4x2Match(-2, -1),
+      // no = 1, mo = 0
+      Int4x2Match(0, 1),   Int4x2Match(2, 3),   Int4x2Match(-8, -7),
+      Int4x2Match(-6, -5), Int4x2Match(0, 0),   Int4x2Match(0, 0),
+      Int4x2Match(0, 0),   Int4x2Match(0, 0),
+      // no = 1, mo = 1
+      Int4x2Match(4, 5),   Int4x2Match(6, 7),   Int4x2Match(-4, -3),
+      Int4x2Match(-2, -1), Int4x2Match(0, 0),   Int4x2Match(0, 0),
+      Int4x2Match(0, 0),   Int4x2Match(0, 0),
+  };
+
+  EXPECT_THAT(output, ElementsAreArray(expected));
+}
+
 TEST(pack_subbyte, int2_non_aligned) {
   const bool transpose = false;
   const int element_size_bits = 2;

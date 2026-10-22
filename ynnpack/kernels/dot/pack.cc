@@ -66,8 +66,7 @@ void packer::pack(size_t m, size_t n, size_t input_stride, const void* input,
       const size_t n_i = std::min(n, tile_n);
       transpose_fn(ceil_div(m, tile_m), n_i, m * elem_size_bits / 8,
                    input_stride, input, output_stride, output);
-      size_t elem_count = std::max<size_t>(8 / elem_size_bits, 1);
-      input = offset_bytes(input, input_stride * (tile_n / elem_count));
+      input = offset_bytes(input, input_stride * tile_n);
       output = offset_bytes(output, output_block_stride);
       n = sub_sat(n, tile_n);
     }

@@ -26,7 +26,8 @@ bool prefer_uint8_dot(ynn_type b_type);
 
 uint32_t define_pack_b(ynn_subgraph& subgraph, const dot_type& type,
                        const dot_kernel& kernel, size_t num_k_dims,
-                       bool consistent_arithmetic, uint32_t input_b_id);
+                       bool consistent_arithmetic, uint32_t input_b_id,
+                       bool transpose = false);
 
 }  // namespace ynn
 
