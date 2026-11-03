@@ -28,6 +28,7 @@ SIMD_TEST_DEPS = [
     "//test:replicable_random_device",
 ]
 
+# TODO: b/582010164 - Refactor f32 and f16 SIMD tests into single .cc files.
 [xnnpack_unit_test(
     name = "f32_simd_" + arch + "_test",
     srcs = [
@@ -52,9 +53,12 @@ SIMD_TEST_DEPS = [
 [xnnpack_unit_test(
     name = "s16_simd_" + arch + "_test",
     srcs = [
-        "s16-simd-" + arch + ".cc",
+        "s16-simd.cc",
     ],
     copts = xnnpack_simd_copts_for_arch(arch),
+    defines = [
+        "XNN_SIMD_" + arch.upper(),
+    ],
     tags = ["simd_wrapper_test"],
     deps = SIMD_TEST_DEPS,
 ) for arch in xnnpack_simd_s16_archs()]
@@ -62,9 +66,12 @@ SIMD_TEST_DEPS = [
 [xnnpack_unit_test(
     name = "s32_simd_" + arch + "_test",
     srcs = [
-        "s32-simd-" + arch + ".cc",
+        "s32-simd.cc",
     ],
     copts = xnnpack_simd_copts_for_arch(arch),
+    defines = [
+        "XNN_SIMD_" + arch.upper(),
+    ],
     tags = ["simd_wrapper_test"],
     deps = SIMD_TEST_DEPS,
 ) for arch in xnnpack_simd_s32_archs()]
@@ -72,9 +79,12 @@ SIMD_TEST_DEPS = [
 [xnnpack_unit_test(
     name = "s8_simd_" + arch + "_test",
     srcs = [
-        "s8-simd-" + arch + ".cc",
+        "s8-simd.cc",
     ],
     copts = xnnpack_simd_copts_for_arch(arch),
+    defines = [
+        "XNN_SIMD_" + arch.upper(),
+    ],
     tags = ["simd_wrapper_test"],
     deps = SIMD_TEST_DEPS,
 ) for arch in xnnpack_simd_s8_archs()]
@@ -82,9 +92,12 @@ SIMD_TEST_DEPS = [
 [xnnpack_unit_test(
     name = "u8_simd_" + arch + "_test",
     srcs = [
-        "u8-simd-" + arch + ".cc",
+        "u8-simd.cc",
     ],
     copts = xnnpack_simd_copts_for_arch(arch),
+    defines = [
+        "XNN_SIMD_" + arch.upper(),
+    ],
     tags = ["simd_wrapper_test"],
     deps = SIMD_TEST_DEPS,
 ) for arch in xnnpack_simd_u8_archs()]
