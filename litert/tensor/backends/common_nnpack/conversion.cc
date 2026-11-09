@@ -65,14 +65,13 @@ absl::StatusOr<std::vector<float>> DequantizeInt8ConstantTensor(
       reinterpret_cast<const int8_t*>(raw_data.data());
 
   for (size_t o = 0; o < out_channels; ++o) {
-    const float scale = pcq.scales[o];
-    const int32_t zero_point =
-        pcq.zero_points.empty() ? 0 : static_cast<int32_t>(pcq.zero_points[o]);
+    const float scale = pcq.scales.size() == 1 ? pcq.scales[0] : pcq.scales[o];
+    const float zero_point = pcq.ZeroPointAt(o);
     const size_t row_offset = o * in_channels;
     for (size_t i = 0; i < in_channels; ++i) {
       const size_t idx = row_offset + i;
       dequantized[idx] =
-          static_cast<float>(quantized_data[idx] - zero_point) * scale;
+          (static_cast<float>(quantized_data[idx]) - zero_point) * scale;
     }
   }
 
