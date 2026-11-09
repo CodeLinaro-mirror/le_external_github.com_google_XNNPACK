@@ -14,6 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <utility>
@@ -26,10 +27,12 @@ limitations under the License.
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "litert/tensor/arithmetic.h"
 #include "litert/tensor/backends/testing/numerical_test_bridge.h"
 #include "litert/tensor/backends/testing/numerical_test_suite.h"
 #include "litert/tensor/backends/xnnpack/arithmetic.h"
-#include "litert/tensor/backends/xnnpack/conversion.h"
+#include "litert/tensor/buffer.h"
+#include "litert/tensor/datatypes.h"
 #include "litert/tensor/runners/xnnpack/runner.h"
 #include "litert/tensor/tensor.h"
 #include "litert/tensor/utils/macros.h"
@@ -123,6 +126,71 @@ struct XnnpackTraits {
 };
 
 INSTANTIATE_TYPED_TEST_SUITE_P(Xnnpack, NumericalTestSuite, XnnpackTraits);
+
+TEST(XnnpackCenteredInt2Test, FullyConnectedWithFloatZeroPoint) {
+  using XnnTensor = Tensor<XnnpackMixinTag>;
+  constexpr int kBatch = 2;
+  constexpr int kInCols = 32;
+  constexpr int kOutCols = 4;
+
+  // Input activation with range [-127, 128] (span 255) and integer values, so
+  // qdint8 dynamic quantization has unit scale (255 / 255 = 1) and zero
+  // rounding error.
+  std::vector<float> x_vals(kBatch * kInCols);
+  for (int b = 0; b < kBatch; ++b) {
+    for (int i = 0; i < kInCols; ++i) {
+      constexpr float kInputs[4] = {-127.0f, -32.0f, 32.0f, 128.0f};
+      x_vals[b * kInCols + i] = kInputs[(b + i) % 4];
+    }
+  }
+
+  // Signed 2-bit values in {-2, -1, 0, +1}; with zero_point = -0.5f,
+  // dequantized weight is (q + 0.5f) * scale in {-1.5, -0.5, +0.5, +1.5} * s.
+  std::vector<int8_t> q_vals(kOutCols * kInCols);
+  for (int o = 0; o < kOutCols; ++o) {
+    for (int i = 0; i < kInCols; ++i) {
+      constexpr int8_t kLevels[4] = {-2, -1, 0, 1};
+      q_vals[o * kInCols + i] = kLevels[(o + i) % 4];
+    }
+  }
+  const std::vector<float> scales = {0.25f, 0.5f, 0.125f, 1.0f};
+  auto w_buf = OwningCpuBuffer::Copy<Type::kI2>(q_vals);
+
+  XnnTensor x(TensorInit{
+      .name = "x", .type = Type::kFP32, .shape = {kBatch, kInCols}});
+  XnnTensor w(TensorInit{
+      .name = "w",
+      .type = Type::kI2,
+      .shape = {kOutCols, kInCols},
+      .buffer = w_buf,
+      .quantization = std::make_shared<PerChannelAffineQuantization>(
+          scales, /*zero_points=*/std::vector<int64_t>{},
+          /*quantized_dimension=*/0,
+          /*float_zero_points=*/std::vector<float>{-0.5f})});
+  XnnTensor y = FullyConnected(x, w);
+
+  auto runner_or = XnnpackRunner::Create({y});
+  ASSERT_TRUE(runner_or.ok()) << runner_or.status();
+  XnnpackRunner& runner = *runner_or;
+  ASSERT_TRUE(runner.SetInput(x, x_vals).ok());
+  ASSERT_TRUE(runner.Run().ok());
+  auto actual_or = runner.ReadOutputAs<float>(y);
+  ASSERT_TRUE(actual_or.ok()) << actual_or.status();
+  LockedBufferSpan<const float> actual = std::move(*actual_or);
+
+  for (int b = 0; b < kBatch; ++b) {
+    for (int o = 0; o < kOutCols; ++o) {
+      float expected = 0.0f;
+      for (int i = 0; i < kInCols; ++i) {
+        const float w_deq =
+            (static_cast<float>(q_vals[o * kInCols + i]) - (-0.5f)) * scales[o];
+        expected += x_vals[b * kInCols + i] * w_deq;
+      }
+      EXPECT_NEAR(actual.data()[b * kOutCols + o], expected, 5e-2f)
+          << "batch=" << b << " out=" << o;
+    }
+  }
+}
 
 }  // namespace
 }  // namespace litert::tensor

@@ -15,10 +15,14 @@ limitations under the License.
 
 #include "litert/tensor/runners/xnnpack/runner.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -34,14 +38,79 @@ limitations under the License.
 #include "litert/tensor/utils/macros.h"
 
 namespace litert::tensor {
+namespace {
+
+bool IsXnnProfilingEnabled() {
+  const char* env = std::getenv("LRT_XNN_PROFILE");
+  return env != nullptr && env[0] == '1';
+}
+
+void PrintXnnProfileSummary(xnn_runtime_t rt) {
+  size_t num_ops = 0;
+  size_t required = 0;
+  if (xnn_get_runtime_profiling_info(rt, xnn_profile_info_num_operators,
+                                     sizeof(num_ops), &num_ops,
+                                     &required) != xnn_status_success ||
+      num_ops == 0) {
+    return;
+  }
+  std::vector<uint64_t> timings(num_ops, 0);
+  if (xnn_get_runtime_profiling_info(rt, xnn_profile_info_operator_timing,
+                                     timings.size() * sizeof(uint64_t),
+                                     timings.data(),
+                                     &required) != xnn_status_success) {
+    return;
+  }
+  size_t names_size = 0;
+  xnn_get_runtime_profiling_info(rt, xnn_profile_info_operator_name, 0, nullptr,
+                                 &names_size);
+  std::vector<char> names_buf(names_size, 0);
+  if (xnn_get_runtime_profiling_info(rt, xnn_profile_info_operator_name,
+                                     names_buf.size(), names_buf.data(),
+                                     &required) != xnn_status_success) {
+    return;
+  }
+  struct OpAgg {
+    size_t count = 0;
+    uint64_t total_us = 0;
+  };
+  absl::flat_hash_map<std::string, OpAgg> by_name;
+  uint64_t total_us = 0;
+  const char* p = names_buf.data();
+  for (size_t i = 0; i < num_ops; ++i) {
+    std::string name(p);
+    p += name.size() + 1;
+    by_name[name].count += 1;
+    by_name[name].total_us += timings[i];
+    total_us += timings[i];
+  }
+  std::vector<std::pair<std::string, OpAgg>> sorted(by_name.begin(),
+                                                    by_name.end());
+  std::sort(sorted.begin(), sorted.end(),
+            [](const auto& a, const auto& b) {
+              return a.second.total_us > b.second.total_us;
+            });
+  std::cerr << "=== XNNPACK Profile (" << num_ops << " ops, total "
+            << (total_us / 1000.0) << " ms) ===\n";
+  for (const auto& [name, agg] : sorted) {
+    std::cerr << absl::StrFormat(
+        "  %-52s count=%4zu  total=%8.3f ms (%5.1f%%)  avg=%6.1f us\n", name,
+        agg.count, agg.total_us / 1000.0,
+        total_us > 0 ? (100.0 * agg.total_us / total_us) : 0.0,
+        static_cast<double>(agg.total_us) / agg.count);
+  }
+}
+
+}  // namespace
 
 absl::Status XnnpackRunner::CreateRuntime() {
   auto& xnn_graph = static_cast<XnnpackGraph&>(*graph_);
   xnn_subgraph_t sg = xnn_graph.GetSubgraph();
   xnn_runtime* raw_runtime = nullptr;
+  const uint32_t flags = IsXnnProfilingEnabled() ? XNN_FLAG_BASIC_PROFILING : 0;
   LRT_TENSOR_RETURN_IF_ERROR(XnnStatusToAbsl(
-      xnn_create_runtime_v4(sg, weights_cache_, workspace_, threadpool_,
-                            /*flags=*/0, &raw_runtime),
+      xnn_create_runtime_v4(sg, weights_cache_, workspace_, threadpool_, flags,
+                            &raw_runtime),
       "xnn_create_runtime_v4"));
   runtime_.reset(raw_runtime);
   // Blockwise FP16 scale buffers are only consumed when packing weights during
@@ -109,8 +178,13 @@ absl::Status XnnpackRunner::SetupExternalValues(
 }
 
 absl::Status XnnpackRunner::InvokeRuntime() {
-  return XnnStatusToAbsl(xnn_invoke_runtime(runtime_.get()),
-                         "xnn_invoke_runtime");
+  LRT_TENSOR_RETURN_IF_ERROR(XnnStatusToAbsl(
+      xnn_invoke_runtime(runtime_.get()), "xnn_invoke_runtime"));
+  if (IsXnnProfilingEnabled() && !profile_logged_) {
+    profile_logged_ = true;
+    PrintXnnProfileSummary(runtime_.get());
+  }
+  return absl::OkStatus();
 }
 
 }  // namespace litert::tensor
