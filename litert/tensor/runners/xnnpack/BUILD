@@ -32,6 +32,7 @@ cc_library(
         "//litert/tensor/runners/common_nnpack:runner",
         "//litert/tensor/utils:macros",
         "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:str_format",
