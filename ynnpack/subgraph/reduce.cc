@@ -314,19 +314,18 @@ slinky::raw_buffer_ptr make_reduce_identity(ynn_type type, int rank,
 // the promoted one.
 std::vector<slinky::expr> compute_reduce_alignments(
     ynn_type stored_type, span<const slinky::expr> extents,
-    const axes_set& k_dims) {
+    const axes_set& k_dims, slinky::index_t min_reduction_elems = 256) {
   // A tile is read as contiguous rows: dimension 0's split, extended by the
   // kept dimensions above it while their extents are covered whole. Short
   // rows are dominated by per-row kernel startup, which is especially
   // expensive for the sub-byte unpack.
   constexpr slinky::index_t row_target_bytes = 1024;
-  // Each tile must reduce at least this many elements, as the *product* of
-  // its reduction-dimension chunks, so writing out the partial accumulators
-  // is amortized: with a chunk of 1 the "partial reduction" is just an
-  // expensive copy of the input. This floor is also what lets a reduction
-  // dimension small enough to fit in the tile reach its full extent, so no
-  // partial reduction is created at all.
-  constexpr slinky::index_t min_reduction_elems = 256;
+  // Each tile must reduce at least `min_reduction_elems` elements, as the
+  // *product* of its reduction-dimension chunks, so writing out the partial
+  // accumulators is amortized: with a chunk of 1 the "partial reduction" is
+  // just an expensive copy of the input. This floor is also what lets a
+  // reduction dimension small enough to fit in the tile reach its full extent,
+  // so no partial reduction is created at all.
 
   const size_t stored_size = std::max<size_t>(1, type_size_bytes(stored_type));
   const slinky::index_t row_elems = std::max<size_t>(
@@ -544,9 +543,19 @@ void define_reduce(ynn_subgraph& subgraph, ynn_node& node,
       }
     }
     if (computed_reduction) {
-      std::vector<slinky::expr> splits =
-          make_split_factors(runtime.globals, phys_extents,
-                             input_a.buffer->elem_size(), split_factors);
+      // When the reduction input is computed in this graph, reserve at least a
+      // few reduction elements per tile (e.g. 8 blocks) so the reduction kernel
+      // doesn't get called with k=1 per iteration while keeping intermediate
+      // tiles small enough to stay in cache.
+      constexpr slinky::index_t min_computed_reduction_elems = 4;
+      std::vector<slinky::expr> alignments =
+          input_a.is_internal()
+              ? compute_reduce_alignments(input_a.type, phys_extents, op.k_dims,
+                                          min_computed_reduction_elems)
+              : std::vector<slinky::expr>{};
+      std::vector<slinky::expr> splits = make_split_factors(
+          runtime.globals, phys_extents, input_a.buffer->elem_size(),
+          split_factors, /*loop_order=*/{}, alignments);
       std::vector<int> order;
       order.reserve(all_dims.size());
       for (size_t d = 0; d < all_dims.size(); ++d) {
