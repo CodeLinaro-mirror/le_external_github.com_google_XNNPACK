@@ -848,6 +848,64 @@ TEST(PACK_KAI_F32_WEIGHTS_AND_BIASES_SME2, null_bias_oom) {
 }
 #endif  // XNN_ENABLE_KLEIDIAI
 
+#if XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) && \
+    (XNN_ENABLE_KLEIDIAI || XNN_ENABLE_ARM_SME_ACLE)
+TEST(PACK_KAI_QS8_QC8W_WEIGHTS_AND_BIASES_SME, unaligned_packed_weights) {
+#if XNN_ENABLE_KLEIDIAI
+#if XNN_ENABLE_ARM_SME
+  TEST_REQUIRES_ARCH_FLAGS(xnn_arch_arm_sme);
+  const size_t nr =
+      xnn_pqs8_qc8w_gemm_minmax_ukernel_32x32c4__neonsme_get_nr();
+#else
+  TEST_REQUIRES_ARCH_FLAGS(xnn_arch_arm_sme | xnn_arch_arm_sme2);
+  const size_t nr =
+      xnn_pqs8_qc8w_gemm_minmax_ukernel_32x32c4__neonsme2_get_nr();
+#endif
+#else
+  const size_t nr = 8;
+#endif
+  const size_t kc = 5;
+  const size_t nc = 6;
+  struct xnn_gemm_config gemm_config = {};
+  gemm_config.nr = nr;
+  gemm_config.log2_kr = 2;
+  gemm_config.log2_sr = 0;
+
+  const size_t stride = xnn_packed_stride_kai_qs8_qc8w_weights_and_biases_sme(
+      &gemm_config, kc, /*unused_block_size=*/0, /*unused_k_stride=*/0,
+      /*extra_bytes=*/0);
+  const size_t packed_size = round_up(nc, nr) * stride;
+
+  std::vector<int8_t> weights(nc * kc);
+  std::iota(weights.begin(), weights.end(), -10);
+  std::vector<int32_t> bias = {100, -200, 300, -400, 500, -600};
+  std::vector<float> scale = {0.25f, 0.5f, 1.25f, 2.5f, 0.125f, 3.0f};
+  const xnn_qs8_packing_params params = {/*input_zero_point=*/3};
+
+  std::vector<uint8_t> aligned_buf(packed_size, 0xAA);
+  std::vector<uint8_t> unaligned_buf(packed_size + 4, 0x55);
+
+  xnn_pack_kai_qs8_qc8w_weights_and_biases_sme(
+      /*flags=*/0, &gemm_config, kc, nc, /*groups=*/1,
+      /*unused_block_size=*/0, /*k_stride=*/kc, bias.data(), weights.data(),
+      /*init_extra_data0_fn=*/nullptr, scale.data(), sizeof(float),
+      /*init_extra_data1_fn=*/nullptr, /*extra_data1=*/nullptr, 0,
+      aligned_buf.data(), &params);
+  xnn_pack_kai_qs8_qc8w_weights_and_biases_sme(
+      /*flags=*/0, &gemm_config, kc, nc, /*groups=*/1,
+      /*unused_block_size=*/0, /*k_stride=*/kc, bias.data(), weights.data(),
+      /*init_extra_data0_fn=*/nullptr, scale.data(), sizeof(float),
+      /*init_extra_data1_fn=*/nullptr, /*extra_data1=*/nullptr, 0,
+      unaligned_buf.data() + 1, &params);
+
+  EXPECT_EQ(unaligned_buf[0], 0x55);
+  EXPECT_EQ(unaligned_buf[1 + packed_size], 0x55);
+  EXPECT_TRUE(std::equal(aligned_buf.begin(), aligned_buf.end(),
+                         unaligned_buf.begin() + 1));
+}
+#endif  // XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) &&
+        // (XNN_ENABLE_KLEIDIAI || XNN_ENABLE_ARM_SME_ACLE)
+
 TEST(PACK_QD8_F32_QC4W_GEMM_GOI_W, kr_eq_4_nr_eq_2) {
   size_t g = 1;
   size_t nc = 2;

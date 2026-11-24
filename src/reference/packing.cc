@@ -48,6 +48,18 @@
 #include "src/xnnpack/allocator.h"
 #endif  // XNN_ENABLE_KLEIDIAI
 
+#ifndef KLEIDI_PACKBUG
+#define KLEIDI_PACKBUG 1
+#endif
+
+#if XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) && \
+    ((XNN_ENABLE_KLEIDIAI && KLEIDI_PACKBUG) ||                      \
+     (!XNN_ENABLE_KLEIDIAI && XNN_ENABLE_ARM_SME_ACLE))
+#include <arm_neon.h>
+#endif  // XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) &&
+        // ((XNN_ENABLE_KLEIDIAI && KLEIDI_PACKBUG) ||
+        //  (!XNN_ENABLE_KLEIDIAI && XNN_ENABLE_ARM_SME_ACLE))
+
 class unaligned_int32_t {
  public:
   XNN_INLINE unaligned_int32_t(  // NOLINT(google-explicit-constructor)
@@ -2583,15 +2595,9 @@ void xnn_pack_qu8_weights_and_biases(
       extra_data1_element_size, packed_weights_ptr, extra_bytes, params);
 }
 
-#ifndef KLEIDI_PACKBUG
-#define KLEIDI_PACKBUG 1
-#endif
-
 #if XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) && \
-    ((XNN_ENABLE_KLEIDIAI && KLEIDI_PACKBUG) ||                     \
+    ((XNN_ENABLE_KLEIDIAI && KLEIDI_PACKBUG) ||                      \
      (!XNN_ENABLE_KLEIDIAI && XNN_ENABLE_ARM_SME_ACLE))
-#include <arm_neon.h>
-
 static void xnn_pack_rhs_nxk_qsi4cxp8vsx4sf32bi32_qsx4cx_f32_i32(
     size_t n, size_t k, size_t nr, size_t rhs_stride_row, size_t packed_stride,
     const uint8_t* rhs_ptr, const int32_t* bias_ptr, const float* scale_ptr,
@@ -6497,8 +6503,8 @@ void xnn_pack_kai_qs8_qc8w_weights_and_biases_sme(
           reinterpret_cast<unaligned_int32_t*>(packed);
       int8_t* dst_weights =
           reinterpret_cast<int8_t*>(packed + nr * sizeof(int32_t));
-      float* dst_scales = reinterpret_cast<float*>(
-          packed + nr * sizeof(int32_t) + nr * k_rounded * sizeof(int8_t));
+      uint8_t* dst_scales =
+          packed + nr * sizeof(int32_t) + nr * k_rounded * sizeof(int8_t);
 
       for (size_t nr_idx = 0; nr_idx < nr; ++nr_idx) {
         const size_t n_idx = block * nr + nr_idx;
@@ -6515,24 +6521,22 @@ void xnn_pack_kai_qs8_qc8w_weights_and_biases_sme(
           }
           const int32_t b_val = bias != nullptr ? bias[n_idx] : 0;
           dst_biases[nr_idx] = b_val - lhs_zero_point * sum;
-          if (scale != nullptr) {
-            dst_scales[nr_idx] = scale[n_idx];
-          }
+          unaligned_store_f32(dst_scales + nr_idx * sizeof(float),
+                              scale != nullptr ? scale[n_idx] : 1.0f);
         } else {
           for (size_t k_idx = 0; k_idx < k_rounded; ++k_idx) {
             dst_weights[(k_idx / kr) * (nr * kr) + nr_idx * kr + (k_idx % kr)] =
                 0;
           }
           dst_biases[nr_idx] = 0;
-          if (scale != nullptr) {
-            dst_scales[nr_idx] = 0.0f;
-          }
+          unaligned_store_f32(dst_scales + nr_idx * sizeof(float), 0.0f);
         }
       }
       packed += block_stride;
     }
   }
 }
-#endif  // XNN_ARCH_ARM64 && ... && !XNN_ENABLE_KLEIDIAI
+#endif  // XNN_ARCH_ARM64 && (XNN_ENABLE_ARM_SME || XNN_ENABLE_ARM_SME2) &&
+        // XNN_ENABLE_ARM_SME_ACLE && !XNN_ENABLE_KLEIDIAI
 
 }  // extern "C"

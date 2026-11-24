@@ -456,6 +456,9 @@ XNNPACK_PARAMS_FOR_ARCH = {
                 "/clang:-march=armv8.2-a+sme+fp16",
                 "/clang:-g0",
             ],
+        ) + xnnpack_select_if(
+            "//:arm_sme_acle_lexan_unoptimized_enabled",
+            ["/clang:-O1"],
         ),
         extra_deps = [
             "//:arm_sme_abi_stubs",
@@ -472,6 +475,9 @@ XNNPACK_PARAMS_FOR_ARCH = {
                 "/clang:-march=armv8.2-a+sme2+fp16",
                 "/clang:-g0",
             ],
+        ) + xnnpack_select_if(
+            "//:arm_sme_acle_lexan_unoptimized_enabled",
+            ["/clang:-O1"],
         ),
         extra_deps = [
             "//:arm_sme_abi_stubs",

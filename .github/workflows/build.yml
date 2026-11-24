@@ -1023,7 +1023,9 @@ jobs:
             //test:qp8_f32_qc8w_gemm_minmax_test \
             //test:pf32_gemm_minmax_test \
             //test:pf16_gemm_minmax_test \
+            //test:pqs8_qc4w_gemm_minmax_test \
             //test:pqs8_qc8w_gemm_minmax_test \
+            //test:x8_pack_lh_test \
             //test:x8_packq_test \
             //test/subgraph/... \
             //ynnpack/...
@@ -1048,7 +1050,9 @@ jobs:
             //test:qp8_f32_qc8w_gemm_minmax_test \
             //test:pf32_gemm_minmax_test \
             //test:pf16_gemm_minmax_test \
+            //test:pqs8_qc4w_gemm_minmax_test \
             //test:pqs8_qc8w_gemm_minmax_test \
+            //test:x8_pack_lh_test \
             //test:x8_packq_test \
             --cache_test_results=no \
             --test_filter="*SME2*:*sme2*" \

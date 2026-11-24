@@ -1899,6 +1899,14 @@ alias(
     }),
 )
 
+alias(
+    name = "arm_sme_acle_lexan_unoptimized_enabled",
+    actual = select({
+        ":optimized_build": "//build_config:always_false",
+        "//conditions:default": ":arm_sme_acle_lexan_enabled",
+    }),
+)
+
 selects.config_setting_group(
     name = "avx512f_enabled_by_default",
     match_any = [
